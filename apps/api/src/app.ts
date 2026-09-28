@@ -1,5 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { calculateImport, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true });
@@ -7,7 +8,18 @@ await app.register(cors, { origin: true });
 
 const imports = new Map<string, ImportOperation>();
 const customers = new Map<string, Customer>();
+type UserRole = "admin" | "operator";
+type User = { id: string; name: string; email: string; role: UserRole; passwordHash: string; mustChangePassword: boolean; createdAt: string };
+type Session = { userId: string; expiresAt: number };
+const users = new Map<string, User>();
+const sessions = new Map<string, Session>();
 const now = new Date().toISOString();
+const hashPassword = (password: string) => { const salt = randomBytes(16).toString("hex"); return `${salt}:${scryptSync(password, salt, 64).toString("hex")}`; };
+const verifyPassword = (password: string, stored: string) => { const [salt, hash] = stored.split(":"); const candidate = scryptSync(password, salt, 64); return timingSafeEqual(candidate, Buffer.from(hash, "hex")); };
+const safeUser = ({ passwordHash: _passwordHash, ...user }: User) => user;
+const initialAdmin: User = { id: "user-admin", name: process.env.ADMIN_NAME || "Administrador", email: (process.env.ADMIN_EMAIL || "admin@exportabrasil.com").toLowerCase(), role: "admin", passwordHash: hashPassword(process.env.ADMIN_INITIAL_PASSWORD || "exporta123"), mustChangePassword: true, createdAt: now };
+users.set(initialAdmin.id, initialAdmin);
+const sessionUser = (authorization?: string) => { const token = authorization?.replace(/^Bearer\s+/i, ""); const session = token ? sessions.get(token) : undefined; return session && session.expiresAt > Date.now() ? users.get(session.userId) : undefined; };
 const antaqFacilitiesUrl = "https://geo.infrasa.gov.br/server/rest/services/Hosted/Instala%C3%A7%C3%B5es_portu%C3%A1rias/FeatureServer/0/query";
 const portCatalogCacheTtlMs = 24 * 60 * 60 * 1000;
 let portCatalogCache: { facilities: PortFacility[]; syncedAt: string; expiresAt: number } | null = null;
@@ -76,6 +88,20 @@ const seed: ImportOperation = {
 imports.set(seed.id, seed);
 
 app.get("/health", async () => ({ status: "ok", service: "exporta-brasil-api" }));
+
+app.post<{ Body: { email: string; password: string } }>("/api/auth/login", async (request, reply) => {
+  const user = [...users.values()].find((item) => item.email === request.body.email.trim().toLowerCase());
+  if (!user || !verifyPassword(request.body.password, user.passwordHash)) return reply.code(401).send({ message: "E-mail ou senha inválidos." });
+  const token = randomBytes(32).toString("base64url"); sessions.set(token, { userId: user.id, expiresAt: Date.now() + 8 * 60 * 60 * 1000 });
+  return { token, user: safeUser(user) };
+});
+app.post<{ Body: { password: string } }>("/api/auth/change-password", async (request, reply) => {
+  const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." });
+  if (request.body.password.length < 8) return reply.code(400).send({ message: "A senha deve ter ao menos 8 caracteres." });
+  user.passwordHash = hashPassword(request.body.password); user.mustChangePassword = false; return { user: safeUser(user) };
+});
+app.get("/api/users", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user || user.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); return [...users.values()].map(safeUser); });
+app.post<{ Body: { name: string; email: string; role: UserRole; initialPassword: string } }>("/api/users", async (request, reply) => { const admin = sessionUser(request.headers.authorization); if (!admin || admin.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); if (request.body.initialPassword.length < 8) return reply.code(400).send({ message: "A senha inicial deve ter ao menos 8 caracteres." }); if ([...users.values()].some((item) => item.email === request.body.email.trim().toLowerCase())) return reply.code(409).send({ message: "Este e-mail já está cadastrado." }); const user: User = { id: `user-${crypto.randomUUID()}`, name: request.body.name.trim(), email: request.body.email.trim().toLowerCase(), role: request.body.role, passwordHash: hashPassword(request.body.initialPassword), mustChangePassword: true, createdAt: new Date().toISOString() }; users.set(user.id, user); return reply.code(201).send(safeUser(user)); });
 
 app.get("/api/port-facilities", async (request, reply) => {
   try {
