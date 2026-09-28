@@ -55,6 +55,8 @@ function uid(prefix: string) { return `${prefix}-${crypto.randomUUID()}`; }
 function inputNumber(value: FormDataEntryValue | null) { return Number(String(value ?? "0").replace(",", ".")) || 0; }
 function formatDate(value: string) { return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${value}T12:00:00`)); }
 function operationIdFromPath() { return window.location.pathname.match(/^\/operacoes\/([^/]+)$/)?.[1] ?? null; }
+function viewFromPath(): View { const path = window.location.pathname; if (path.startsWith("/operacoes")) return "imports"; if (path === "/clientes") return "customers"; if (path === "/portos") return "ports"; if (path === "/relatorios") return "reports"; if (path === "/pendencias") return "pending"; return "dashboard"; }
+function viewUrl(view: View) { return ({ dashboard: "/", imports: "/operacoes", customers: "/clientes", ports: "/portos", reports: "/relatorios", pending: "/pendencias" } as const)[view]; }
 type OperationsFilters = { query: string; status: ImportStatus | "all"; channel: CustomsSignal | "all"; sort: "oldest" | "newest" | "updated"; page: number };
 function operationsFiltersFromUrl(): OperationsFilters { const params = new URLSearchParams(window.location.search); const status = params.get("status"); const channel = params.get("channel"); const sort = params.get("sort"); return { query: params.get("search") ?? "", status: status && status in importStatusMeta ? status as ImportStatus : "all", channel: channel && channel in customsChannelMeta ? channel as CustomsSignal : "all", sort: sort === "newest" || sort === "updated" ? sort : "oldest", page: Math.max(1, Number(params.get("page")) || 1) }; }
 function operationsUrl(filters: OperationsFilters) { const params = new URLSearchParams(); if (filters.query) params.set("search", filters.query); if (filters.status !== "all") params.set("status", filters.status); if (filters.channel !== "all") params.set("channel", filters.channel); if (filters.sort !== "oldest") params.set("sort", filters.sort); if (filters.page > 1) params.set("page", String(filters.page)); const query = params.toString(); return `/operacoes${query ? `?${query}` : ""}`; }
@@ -67,7 +69,7 @@ function LoginScreen({ onAuthenticated }: { onAuthenticated: (session: { token: 
 function InitialPasswordScreen({ session, onAuthenticated }: { session: { token: string; user: SessionUser }; onAuthenticated: (next: { token: string; user: SessionUser }) => void }) { const [error, setError] = useState(""); const submit = async (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); const password = String(form.get("password")); if (password !== form.get("confirmation")) return setError("As senhas não coincidem."); const response = await fetch(`${apiUrl}/api/auth/change-password`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${session.token}` }, body: JSON.stringify({ password }) }); const payload = await response.json() as { user?: SessionUser; message?: string }; if (!response.ok || !payload.user) return setError(payload.message || "Não foi possível atualizar a senha."); onAuthenticated({ token: session.token, user: payload.user }); }; return <AccessLayout><section className="login-card"><p className="eyebrow">PRIMEIRO ACESSO</p><h1>Defina sua senha.</h1><p>Escolha uma senha pessoal para concluir a ativação da sua conta.</p><form onSubmit={submit}><label><span>Nova senha</span><span className="login-input"><LockKeyhole size={18} /><input name="password" type="password" minLength={8} required autoComplete="new-password" /></span></label><label><span>Confirme a senha</span><span className="login-input"><LockKeyhole size={18} /><input name="confirmation" type="password" minLength={8} required autoComplete="new-password" /></span></label>{error && <p className="login-error" role="alert">{error}</p>}<button className="button button--primary login-submit">Concluir acesso</button></form></section></AccessLayout>; }
 
 function BackofficeApp({ session, onLogout }: { session: { token: string; user: SessionUser }; onLogout: () => void }) {
-  const [view, setView] = useState<View>(() => operationIdFromPath() ? "imports" : "dashboard");
+  const [view, setView] = useState<View>(viewFromPath);
   const [operations, setOperations] = useState<ImportOperation[]>(() => {
     try { return (JSON.parse(localStorage.getItem(storageKey) || "") as Array<Partial<ImportOperation>>).map((operation) => ({ ...operation, customsChannel: operation.customsChannel === "gray" && ["in_transit", "customs_clearance"].includes(operation.portStatus ?? "") ? "pending" : operation.customsChannel ?? "pending" } as ImportOperation)); } catch { return initialOperations; }
   });
@@ -92,7 +94,7 @@ function BackofficeApp({ session, onLogout }: { session: { token: string; user: 
 
   useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(operations)); }, [operations]);
   useEffect(() => { localStorage.setItem(customersStorageKey, JSON.stringify(customers)); }, [customers]);
-  useEffect(() => { const syncRoute = () => { setDetailId(operationIdFromPath()); setOperationsUrlState(window.location.search); }; window.addEventListener("popstate", syncRoute); return () => window.removeEventListener("popstate", syncRoute); }, []);
+  useEffect(() => { const syncRoute = () => { setView(viewFromPath()); setDetailId(operationIdFromPath()); setOperationsUrlState(window.location.search); }; window.addEventListener("popstate", syncRoute); return () => window.removeEventListener("popstate", syncRoute); }, []);
   const loadPortCatalog = () => {
     setPortCatalogState("loading"); setPortCatalogError("");
     fetch(`${apiUrl}/api/port-facilities`).then(async (response) => {
@@ -124,7 +126,7 @@ function BackofficeApp({ session, onLogout }: { session: { token: string; user: 
       container: String(form.get("container")), eta: String(form.get("eta")), status: "draft", portStatus: "awaiting_departure", customsChannel: "pending",
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: []
     };
-    setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); setView("imports");
+    setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); openOperations();
   };
 
   const saveCustomer = (event: FormEvent<HTMLFormElement>) => {
@@ -159,7 +161,7 @@ function BackofficeApp({ session, onLogout }: { session: { token: string; user: 
     updateOperation(selected.id, { items: [...selected.items, item] }); setShowNewItem(false);
   };
 
-  const changeView = (next: View) => { setView(next); setSidebarOpen(false); };
+  const changeView = (next: View) => { window.history.pushState({}, "", viewUrl(next)); setView(next); setDetailId(null); setOperationsUrlState(window.location.search); setSidebarOpen(false); };
   const openOperations = (filters: Partial<OperationsFilters> = {}) => { const next = { ...operationsFiltersFromUrl(), ...filters }; const url = operationsUrl(next); window.history.pushState({}, "", url); setOperationsUrlState(window.location.search); setDetailId(null); setView("imports"); };
   const updateOperationsFilters = (filters: OperationsFilters) => { window.history.pushState({}, "", operationsUrl(filters)); setOperationsUrlState(window.location.search); };
   const openOperation = (id: string) => { window.history.pushState({}, "", `/operacoes/${id}${window.location.search}`); setSelectedId(id); setDetailId(id); setView("imports"); };
@@ -178,7 +180,7 @@ function BackofficeApp({ session, onLogout }: { session: { token: string; user: 
        {view === "imports" && detailId && selected && <OperationDetailPage selected={selected} onBack={closeOperationDetail} onAddItem={() => setShowNewItem(true)} onUpdate={updateOperation} />}
        {view === "ports" && <PortsCatalogView facilities={portFacilities} state={portCatalogState} error={portCatalogError} onRetry={loadPortCatalog} />}
        {view === "customers" && <CustomersView customers={customers} operations={operations} onNew={() => { setEditingCustomer(null); setShowNewCustomer(true); }} onEdit={(customer) => { setEditingCustomer(customer); setShowNewCustomer(true); }} />}
-       {["pending", "reports"].includes(view) && <Placeholder view={view} onNavigate={() => setView("imports")} />}
+       {["pending", "reports"].includes(view) && <Placeholder view={view} onNavigate={() => openOperations()} />}
     </main>
     <nav className="bottom-nav" aria-label="Navegação móvel">{navigation.slice(0, 4).map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? "is-active" : ""} onClick={() => changeView(id)}><Icon size={19} /><span>{label}</span></button>)}</nav>
     {showNewImport && <Dialog title={showImportCustomerForm ? "Novo cliente" : showCustomerPicker ? "Selecionar cliente" : "Nova importação"} className="dialog--wide" onClose={() => { setShowNewImport(false); setShowCustomerPicker(false); setShowImportCustomerForm(false); setImportCustomerId(""); }}><div hidden={showCustomerPicker || showImportCustomerForm}><ImportForm customers={customers} customerId={importCustomerId} portFacilities={portFacilities} portCatalogState={portCatalogState} portCatalogError={portCatalogError} onRetryPorts={loadPortCatalog} onSelectCustomer={() => setShowCustomerPicker(true)} onNewCustomer={() => setShowImportCustomerForm(true)} onSubmit={createOperation} /></div>{showCustomerPicker && <CustomerPickerContent customers={customers} onBack={() => setShowCustomerPicker(false)} onNewCustomer={() => { setShowCustomerPicker(false); setShowImportCustomerForm(true); }} onSelect={(id) => { setImportCustomerId(id); setShowCustomerPicker(false); }} />}{showImportCustomerForm && <CustomerForm customer={null} onSubmit={saveImportCustomer} onCancel={() => setShowImportCustomerForm(false)} />}</Dialog>}
