@@ -313,7 +313,7 @@ function CustomerForm({ customer, onSubmit, onLookup, onAddressLookup, onCancel 
     const raw = cepRaw(value);
     if (raw.length < 8) return setAddressMessage("Informe os 8 dígitos do CEP para consultar o endereço.");
     setIsLookingUpAddress(true); setAddressMessage("Consultando endereço…");
-    try { const address = await onAddressLookup(raw); (Object.entries(address) as Array<[keyof AddressLookup, string | undefined]>).forEach(([name, fieldValue]) => fill(name, fieldValue)); setPostalCode(formatCep(address.postalCode || raw)); setAddressMessage("Endereço preenchido pelo ViaCEP. Complete o número, se necessário."); }
+    try { const address = await onAddressLookup(raw); (Object.entries(address) as Array<[keyof AddressLookup, string | undefined]>).forEach(([name, fieldValue]) => fill(name, fieldValue)); setPostalCode(formatCep(address.postalCode || raw)); setAddressMessage(""); }
     catch (error) { setAddressMessage(error instanceof Error ? error.message : "Não foi possível consultar o CEP."); }
     finally { setIsLookingUpAddress(false); }
   };
