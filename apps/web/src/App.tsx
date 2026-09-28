@@ -1,0 +1,149 @@
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  Archive, Bell, Box, ChartNoAxesCombined, ChevronRight, CircleHelp, ClipboardList,
+  Container, FileBarChart, LayoutDashboard, MapPinned, Menu, PackagePlus, Plus,
+  Search, Settings, ShipWheel, Users, X
+} from "lucide-react";
+import {
+  calculateImport, importStatusMeta, portStatusMeta,
+  type ImportItem, type ImportOperation, type ImportStatus, type PortStatus
+} from "@exporta/domain";
+
+type View = "dashboard" | "imports" | "ports" | "pending" | "customers" | "reports";
+
+const storageKey = "exporta-brasil-imports-v1";
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const initialOperations: ImportOperation[] = [{
+  id: "imp-001", reference: "EB-2026-001", customer: "Aurora Comércio", supplier: "Ningbo Horizon Co.",
+  port: "Porto de Santos", container: "TGHU 812903-4", status: "customs", portStatus: "customs_clearance",
+  eta: "2026-10-03", updatedAt: "2026-09-27T14:30:00.000Z", exchangeRate: 5.42,
+  freightBrl: 18400, insuranceBrl: 1850, portExpensesBrl: 12680,
+  items: [
+    { id: "item-001", name: "Mala de viagem rígida", ncm: "42021220", quantity: 480, unitPriceUsd: 18.4, grossWeightKg: 3.2, iiRate: 18, ipiRate: 15 },
+    { id: "item-002", name: "Mochila executiva", ncm: "42029200", quantity: 720, unitPriceUsd: 11.7, grossWeightKg: 1.1, iiRate: 20, ipiRate: 10 }
+  ]
+}, {
+  id: "imp-002", reference: "EB-2026-002", customer: "Casa Norte", supplier: "Qingdao Bright Ltd.",
+  port: "Porto de Itajaí", container: "TRHU 229140-6", status: "in_transit", portStatus: "in_transit",
+  eta: "2026-10-16", updatedAt: "2026-09-26T11:00:00.000Z", exchangeRate: 5.38,
+  freightBrl: 12600, insuranceBrl: 980, portExpensesBrl: 8200,
+  items: [{ id: "item-003", name: "Organizador doméstico", ncm: "39249000", quantity: 1200, unitPriceUsd: 4.85, grossWeightKg: 0.45, iiRate: 18, ipiRate: 5 }]
+}];
+
+const navigation: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: "dashboard", label: "Início", icon: LayoutDashboard },
+  { id: "imports", label: "Operações", icon: ShipWheel },
+  { id: "ports", label: "Portos", icon: MapPinned },
+  { id: "pending", label: "Pendências", icon: ClipboardList },
+  { id: "customers", label: "Clientes", icon: Users },
+  { id: "reports", label: "Relatórios", icon: ChartNoAxesCombined }
+];
+
+function uid(prefix: string) { return `${prefix}-${crypto.randomUUID()}`; }
+function inputNumber(value: FormDataEntryValue | null) { return Number(String(value ?? "0").replace(",", ".")) || 0; }
+function formatDate(value: string) { return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${value}T12:00:00`)); }
+
+export function App() {
+  const [view, setView] = useState<View>("dashboard");
+  const [operations, setOperations] = useState<ImportOperation[]>(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || "") as ImportOperation[]; } catch { return initialOperations; }
+  });
+  const [selectedId, setSelectedId] = useState("imp-001");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showNewImport, setShowNewImport] = useState(false);
+  const [showNewItem, setShowNewItem] = useState(false);
+
+  useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(operations)); }, [operations]);
+  const selected = operations.find((operation) => operation.id === selectedId) ?? operations[0];
+  const totalInProgress = operations.filter((item) => !["completed", "cleared"].includes(item.status)).length;
+  const totalValue = useMemo(() => operations.reduce((sum, operation) => sum + calculateImport(operation).totalCost, 0), [operations]);
+
+  const updateOperation = (id: string, changes: Partial<ImportOperation>) => {
+    setOperations((current) => current.map((operation) => operation.id === id ? { ...operation, ...changes, updatedAt: new Date().toISOString() } : operation));
+  };
+
+  const createOperation = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const operation: ImportOperation = {
+      id: uid("imp"), reference: String(form.get("reference") || `EB-${new Date().getFullYear()}-${String(operations.length + 1).padStart(3, "0")}`),
+      customer: String(form.get("customer")), supplier: String(form.get("supplier")), port: String(form.get("port")),
+      container: String(form.get("container")), eta: String(form.get("eta")), status: "draft", portStatus: "awaiting_departure",
+      updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: []
+    };
+    setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setShowNewImport(false); setView("imports");
+  };
+
+  const addItem = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); if (!selected) return;
+    const form = new FormData(event.currentTarget);
+    const item: ImportItem = {
+      id: uid("item"), name: String(form.get("name")), ncm: String(form.get("ncm")), quantity: inputNumber(form.get("quantity")),
+      unitPriceUsd: inputNumber(form.get("unitPriceUsd")), grossWeightKg: inputNumber(form.get("grossWeightKg")),
+      iiRate: inputNumber(form.get("iiRate")), ipiRate: inputNumber(form.get("ipiRate"))
+    };
+    updateOperation(selected.id, { items: [...selected.items, item] }); setShowNewItem(false);
+  };
+
+  const changeView = (next: View) => { setView(next); setSidebarOpen(false); };
+  return <div className="app-shell">
+    <aside className={`sidebar ${sidebarOpen ? "sidebar--open" : ""}`} aria-label="Navegação principal">
+      <div className="brand"><span className="brand-mark">EB</span><span><strong>Exporta</strong><small>Brasil</small></span><button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu"><X size={20} /></button></div>
+      <nav>{navigation.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-item ${view === id ? "is-active" : ""}`} onClick={() => changeView(id)}><Icon size={19} /><span>{label}</span>{id === "pending" && <b className="nav-count">3</b>}</button>)}</nav>
+      <div className="sidebar-footer"><button className="nav-item"><Settings size={19} /><span>Configurações</span></button><div className="user-card"><span className="avatar">LA</span><span><strong>Lucas Alves</strong><small>Administrador</small></span></div></div>
+    </aside>
+    {sidebarOpen && <button className="scrim" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu" />}
+    <main className="main-content">
+      <header className="topbar"><button className="icon-button mobile-only" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu"><Menu size={21} /></button><div className="breadcrumb"><span>Operações</span><ChevronRight size={15} /><strong>{view === "dashboard" ? "Visão geral" : navigation.find((item) => item.id === view)?.label}</strong></div><div className="top-actions"><button className="icon-button" aria-label="Buscar"><Search size={19} /></button><button className="icon-button notification" aria-label="Notificações"><Bell size={19} /><i /></button><button className="icon-button" aria-label="Ajuda"><CircleHelp size={19} /></button></div></header>
+      {view === "dashboard" && <Dashboard operations={operations} totalInProgress={totalInProgress} totalValue={totalValue} onOpen={() => setView("imports")} />}
+      {view === "imports" && selected && <OperationsView operations={operations} selected={selected} onSelect={setSelectedId} onNew={() => setShowNewImport(true)} onAddItem={() => setShowNewItem(true)} onUpdate={updateOperation} />}
+      {view === "ports" && selected && <PortsView operations={operations} selected={selected} onSelect={setSelectedId} onUpdate={updateOperation} />}
+      {["pending", "customers", "reports"].includes(view) && <Placeholder view={view} onNavigate={() => setView("imports")} />}
+    </main>
+    <nav className="bottom-nav" aria-label="Navegação móvel">{navigation.slice(0, 4).map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? "is-active" : ""} onClick={() => changeView(id)}><Icon size={19} /><span>{label}</span></button>)}</nav>
+    {showNewImport && <Dialog title="Nova importação" onClose={() => setShowNewImport(false)}><ImportForm onSubmit={createOperation} /></Dialog>}
+    {showNewItem && <Dialog title="Adicionar produto" onClose={() => setShowNewItem(false)}><ItemForm onSubmit={addItem} /></Dialog>}
+  </div>;
+}
+
+function Dashboard({ operations, totalInProgress, totalValue, onOpen }: { operations: ImportOperation[]; totalInProgress: number; totalValue: number; onOpen: () => void }) {
+  const atPort = operations.filter((operation) => ["at_port", "customs"].includes(operation.status)).length;
+  return <section className="page"><div className="page-heading"><div><p className="eyebrow">CENTRO DE CONTROLE</p><h1>Operações sob controle.</h1><p className="muted">Acompanhe custos, cargas e decisões que pedem atenção.</p></div><button className="button button--primary" onClick={onOpen}><ShipWheel size={18} /> Ver operações</button></div>
+    <div className="metric-grid"><Metric icon={<Container />} label="Importações ativas" value={String(totalInProgress)} detail="processos em andamento" tone="blue" /><Metric icon={<MapPinned />} label="Cargas em porto" value={String(atPort)} detail="com atualização necessária" tone="amber" /><Metric icon={<ChartNoAxesCombined />} label="Custo projetado" value={money.format(totalValue)} detail="nas operações abertas" tone="green" /></div>
+    <div className="dashboard-grid"><section className="panel"><div className="panel-header"><div><h2>Operações recentes</h2><p>Os processos que exigem acompanhamento.</p></div><button className="text-button" onClick={onOpen}>Ver todas</button></div><div className="activity-list">{operations.map((operation) => <button className="activity-row" key={operation.id} onClick={onOpen}><span className="activity-icon"><ShipWheel size={18} /></span><span><strong>{operation.reference}</strong><small>{operation.customer} · {operation.port}</small></span><StatusBadge status={operation.status} /><ChevronRight size={18} /></button>)}</div></section>
+      <section className="panel attention-card"><div className="panel-header"><div><h2>Próxima decisão</h2><p>Uma pendência prioritária.</p></div><span className="urgency">Hoje</span></div><div className="attention-body"><span className="attention-icon"><ClipboardList size={22} /></span><div><strong>Validar documentação de desembaraço</strong><p>EB-2026-001 está em análise aduaneira no Porto de Santos.</p><button className="text-button" onClick={onOpen}>Abrir operação <ChevronRight size={15} /></button></div></div></section></div>
+  </section>;
+}
+
+function OperationsView({ operations, selected, onSelect, onNew, onAddItem, onUpdate }: { operations: ImportOperation[]; selected: ImportOperation; onSelect: (id: string) => void; onNew: () => void; onAddItem: () => void; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) {
+  const calculated = calculateImport(selected);
+  return <section className="page operations-page"><div className="page-heading"><div><p className="eyebrow">GESTÃO DE IMPORTAÇÕES</p><h1>Operações</h1><p className="muted">Custos distribuídos por item e progresso da carga em um só lugar.</p></div><button className="button button--primary" onClick={onNew}><Plus size={18} /> Nova importação</button></div>
+    <div className="operation-layout"><section className="panel operation-list"><div className="panel-title"><h2>Processos</h2><span>{operations.length} ativos</span></div>{operations.map((operation) => { const summary = calculateImport(operation); return <button className={`operation-list-item ${operation.id === selected.id ? "is-selected" : ""}`} key={operation.id} onClick={() => onSelect(operation.id)}><div><strong>{operation.reference}</strong><small>{operation.customer}</small></div><StatusBadge status={operation.status} /><small>{money.format(summary.totalCost)}</small></button>; })}</section>
+      <section className="operation-detail"><OperationHeader operation={selected} onUpdate={onUpdate} /><div className="summary-grid"><Summary label="Custo total" value={money.format(calculated.totalCost)} detail="estimativa atual" /><Summary label="Tributos estimados" value={money.format(calculated.taxes)} detail="II + IPI" /><Summary label="Peso bruto" value={`${decimal.format(calculated.totalWeight)} kg`} detail="todos os itens" /></div><section className="panel"><div className="panel-header"><div><h2>Produtos da importação</h2><p>O custo unitário já inclui rateio e tributos.</p></div><button className="button button--secondary" onClick={onAddItem}><PackagePlus size={17} /> Adicionar item</button></div><ProductsTable calculated={calculated} /></section><CostsForm operation={selected} calculated={calculated} onUpdate={onUpdate} /></section>
+    </div>
+  </section>;
+}
+
+function OperationHeader({ operation, onUpdate }: { operation: ImportOperation; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) {
+  return <header className="operation-header panel"><div><p className="eyebrow">{operation.reference}</p><h2>{operation.customer}</h2><p className="muted">{operation.supplier} · {operation.container}</p></div><div className="operation-status"><label>Status da operação<select value={operation.status} onChange={(event) => onUpdate(operation.id, { status: event.target.value as ImportStatus })}>{Object.entries(importStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label><StatusBadge status={operation.status} /></div><div className="port-progress"><div><span className="port-pin"><MapPinned size={18} /></span><span><strong>{operation.port}</strong><small>ETA {formatDate(operation.eta)}</small></span></div><label>Status portuário<select value={operation.portStatus} onChange={(event) => onUpdate(operation.id, { portStatus: event.target.value as PortStatus })}>{Object.entries(portStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label></div></header>;
+}
+
+function PortsView({ operations, selected, onSelect, onUpdate }: { operations: ImportOperation[]; selected: ImportOperation; onSelect: (id: string) => void; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) {
+  const portStep = Object.keys(portStatusMeta).indexOf(selected.portStatus);
+  return <section className="page"><div className="page-heading"><div><p className="eyebrow">ACOMPANHAMENTO LOGÍSTICO</p><h1>Status nos portos</h1><p className="muted">Atualize o andamento informado pelo agente, terminal ou despachante.</p></div></div><div className="port-page-grid"><section className="panel compact-list"><h2>Importações em acompanhamento</h2>{operations.map((operation) => <button key={operation.id} className={operation.id === selected.id ? "is-selected" : ""} onClick={() => onSelect(operation.id)}><span><strong>{operation.reference}</strong><small>{operation.port}</small></span><span className="dot-status" data-status={operation.portStatus} /><ChevronRight size={17} /></button>)}</section><section className="panel route-card"><div className="route-header"><div><p className="eyebrow">{selected.reference}</p><h2>{selected.port}</h2><p>{selected.container} · ETA {formatDate(selected.eta)}</p></div><StatusBadge status={selected.status} /></div><div className="timeline">{Object.entries(portStatusMeta).map(([value, meta], index) => <div className={`timeline-step ${index <= portStep ? "is-done" : ""} ${value === selected.portStatus ? "is-current" : ""}`} key={value}><span>{index < portStep ? "✓" : index + 1}</span><div><strong>{meta.label}</strong><p>{meta.detail}</p></div></div>)}</div><div className="update-port"><label>Registrar status atual<select value={selected.portStatus} onChange={(event) => onUpdate(selected.id, { portStatus: event.target.value as PortStatus })}>{Object.entries(portStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label><p>Última atualização interna: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(selected.updatedAt))}.</p></div></section></div></section>;
+}
+
+function ProductsTable({ calculated }: { calculated: ReturnType<typeof calculateImport> }) { return <div className="table-scroll"><table><thead><tr><th>Produto / NCM</th><th>Qtd.</th><th>FOB</th><th>Rateio</th><th>Tributos</th><th>Custo unitário</th></tr></thead><tbody>{calculated.items.length === 0 ? <tr><td colSpan={6} className="empty-cell">Adicione os produtos para calcular os custos.</td></tr> : calculated.items.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.ncm}</small></td><td>{item.quantity}</td><td>{money.format(item.itemFob)}</td><td>{money.format(item.allocatedExpenses)}</td><td>{money.format(item.ii + item.ipi)}</td><td><strong>{money.format(item.unitCost)}</strong></td></tr>)}</tbody></table></div>; }
+
+function CostsForm({ operation, calculated, onUpdate }: { operation: ImportOperation; calculated: ReturnType<typeof calculateImport>; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) { return <section className="panel costs-panel"><div className="panel-header"><div><h2>Valores e rateio</h2><p>Os custos logísticos são distribuídos proporcionalmente ao FOB de cada item.</p></div></div><div className="cost-inputs"><NumberField label="Câmbio (R$/US$)" value={operation.exchangeRate} step="0.01" onChange={(value) => onUpdate(operation.id, { exchangeRate: value })} /><NumberField label="Frete internacional" value={operation.freightBrl} onChange={(value) => onUpdate(operation.id, { freightBrl: value })} prefix="R$" /><NumberField label="Seguro" value={operation.insuranceBrl} onChange={(value) => onUpdate(operation.id, { insuranceBrl: value })} prefix="R$" /><NumberField label="Despesas portuárias" value={operation.portExpensesBrl} onChange={(value) => onUpdate(operation.id, { portExpensesBrl: value })} prefix="R$" /></div><div className="cost-result"><span>Base FOB: <strong>{money.format(calculated.fobBrl)}</strong></span><span>Custos rateados: <strong>{money.format(calculated.baseExpenses)}</strong></span><span>Tributos: <strong>{money.format(calculated.taxes)}</strong></span><span className="cost-total">Total projetado <strong>{money.format(calculated.totalCost)}</strong></span></div></section>; }
+
+function NumberField({ label, value, onChange, prefix, step = "1" }: { label: string; value: number; onChange: (value: number) => void; prefix?: string; step?: string }) { return <label className="field"><span>{label}</span><div className="number-input">{prefix && <b>{prefix}</b>}<input type="number" min="0" step={step} value={value} onChange={(event) => onChange(Number(event.target.value) || 0)} /></div></label>; }
+function Summary({ label, value, detail }: { label: string; value: string; detail: string }) { return <div className="summary-card"><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>; }
+function Metric({ icon, label, value, detail, tone }: { icon: ReactNode; label: string; value: string; detail: string; tone: string }) { return <section className={`metric-card tone-${tone}`}><span className="metric-icon">{icon}</span><p>{label}</p><strong>{value}</strong><small>{detail}</small></section>; }
+function StatusBadge({ status }: { status: ImportStatus }) { const meta = importStatusMeta[status]; return <span className={`status status--${meta.tone}`}>{meta.label}</span>; }
+function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) { return <div className="dialog-backdrop" role="presentation"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><header><h2 id="dialog-title">{title}</h2><button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={20} /></button></header>{children}</section></div>; }
+function ImportForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void }) { return <form className="form-grid" onSubmit={onSubmit}><label className="field"><span>Referência</span><input name="reference" placeholder="EB-2026-003" /></label><label className="field"><span>Cliente</span><input name="customer" required placeholder="Nome do cliente" /></label><label className="field"><span>Fornecedor</span><input name="supplier" required placeholder="Fornecedor internacional" /></label><label className="field"><span>Porto de destino</span><input name="port" required defaultValue="Porto de Santos" /></label><label className="field"><span>Contêiner</span><input name="container" required placeholder="ABCD 123456-7" /></label><label className="field"><span>ETA</span><input name="eta" type="date" required /></label><button className="button button--primary form-submit" type="submit"><Plus size={18} /> Criar importação</button></form>; }
+function ItemForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void }) { return <form className="form-grid" onSubmit={onSubmit}><label className="field full"><span>Produto</span><input name="name" required placeholder="Descrição comercial" /></label><label className="field"><span>NCM</span><input name="ncm" required inputMode="numeric" placeholder="00000000" /></label><label className="field"><span>Quantidade</span><input name="quantity" required type="number" min="1" /></label><label className="field"><span>Preço unitário (US$)</span><input name="unitPriceUsd" required type="number" min="0" step="0.01" /></label><label className="field"><span>Peso bruto unitário (kg)</span><input name="grossWeightKg" required type="number" min="0" step="0.01" /></label><label className="field"><span>II (%)</span><input name="iiRate" required type="number" min="0" step="0.01" defaultValue="18" /></label><label className="field"><span>IPI (%)</span><input name="ipiRate" required type="number" min="0" step="0.01" defaultValue="0" /></label><button className="button button--primary form-submit" type="submit"><PackagePlus size={18} /> Adicionar produto</button></form>; }
+function Placeholder({ view, onNavigate }: { view: View; onNavigate: () => void }) { const title = navigation.find((item) => item.id === view)?.label ?? "Módulo"; return <section className="page"><div className="placeholder panel"><span><Archive size={28} /></span><p className="eyebrow">PRÓXIMA FRENTE</p><h1>{title}</h1><p>Este módulo já está reservado na arquitetura. A primeira entrega concentra a operação de importação ponta a ponta.</p><button className="button button--secondary" onClick={onNavigate}>Abrir operações</button></div></section>; }
