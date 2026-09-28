@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {
   calculateImport, importStatusMeta, portStatusMeta,
-  type Customer, type ImportItem, type ImportOperation, type ImportStatus, type PortStatus
+  type Customer, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus
 } from "@exporta/domain";
 import { DialogClose, DialogContent, DialogRoot, DialogTitle } from "./components/ui/dialog";
 
@@ -14,6 +14,7 @@ type View = "dashboard" | "imports" | "ports" | "pending" | "customers" | "repor
 
 const storageKey = "exporta-brasil-imports-v1";
 const customersStorageKey = "exporta-brasil-customers-v1";
+const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3171";
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -42,10 +43,10 @@ const initialCustomers: Customer[] = [
 const navigation: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Início", icon: LayoutDashboard },
   { id: "imports", label: "Operações", icon: ShipWheel },
-  { id: "ports", label: "Portos", icon: MapPinned },
-  { id: "pending", label: "Pendências", icon: ClipboardList },
   { id: "customers", label: "Clientes", icon: Users },
-  { id: "reports", label: "Relatórios", icon: ChartNoAxesCombined }
+  { id: "ports", label: "Portos", icon: MapPinned },
+  { id: "reports", label: "Relatórios", icon: ChartNoAxesCombined },
+  { id: "pending", label: "Pendências", icon: ClipboardList }
 ];
 
 function uid(prefix: string) { return `${prefix}-${crypto.randomUUID()}`; }
@@ -69,10 +70,23 @@ export function App() {
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [importCustomerId, setImportCustomerId] = useState("");
+  const [portFacilities, setPortFacilities] = useState<PortFacility[]>([]);
+  const [portCatalogState, setPortCatalogState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [portCatalogError, setPortCatalogError] = useState("");
 
   useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(operations)); }, [operations]);
   useEffect(() => { localStorage.setItem(customersStorageKey, JSON.stringify(customers)); }, [customers]);
   useEffect(() => { const syncRoute = () => setDetailId(operationIdFromPath()); window.addEventListener("popstate", syncRoute); return () => window.removeEventListener("popstate", syncRoute); }, []);
+  const loadPortCatalog = () => {
+    setPortCatalogState("loading"); setPortCatalogError("");
+    fetch(`${apiUrl}/api/port-facilities`).then(async (response) => {
+      if (!response.ok) throw new Error((await response.json() as { message?: string }).message ?? "Não foi possível carregar o catálogo.");
+      return response.json() as Promise<{ data: PortFacility[] }>;
+    }).then((payload) => { setPortFacilities(payload.data); setPortCatalogState("ready"); }).catch((error: unknown) => {
+      setPortCatalogError(error instanceof Error ? error.message : "Não foi possível carregar o catálogo."); setPortCatalogState("error");
+    });
+  };
+  useEffect(() => { if (view === "ports" && portCatalogState === "idle") loadPortCatalog(); }, [view, portCatalogState]);
   const selected = operations.find((operation) => operation.id === selectedId) ?? operations[0];
   const totalInProgress = operations.filter((item) => !["completed", "cleared"].includes(item.status)).length;
   const totalValue = useMemo(() => operations.reduce((sum, operation) => sum + calculateImport(operation).totalCost, 0), [operations]);
@@ -131,11 +145,11 @@ export function App() {
     </aside>
     {sidebarOpen && <button className="scrim" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu" />}
     <main className="main-content">
-      <header className="topbar"><button className="icon-button mobile-only" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu"><Menu size={21} /></button><div className="breadcrumb"><span>Operações</span><ChevronRight size={15} /><strong>{view === "dashboard" ? "Visão geral" : navigation.find((item) => item.id === view)?.label}</strong></div><div className="top-actions"><button className="icon-button" aria-label="Buscar"><Search size={19} /></button><button className="icon-button notification" aria-label="Notificações"><Bell size={19} /><i /></button><button className="icon-button" aria-label="Ajuda"><CircleHelp size={19} /></button></div></header>
+      <header className="topbar"><button className="icon-button mobile-only" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu"><Menu size={21} /></button><div className="breadcrumb"><span>Início</span><ChevronRight size={15} /><strong>{view === "dashboard" ? "Visão geral" : navigation.find((item) => item.id === view)?.label}</strong></div><div className="top-actions"><button className="icon-button" aria-label="Buscar"><Search size={19} /></button><button className="icon-button notification" aria-label="Notificações"><Bell size={19} /><i /></button><button className="icon-button" aria-label="Ajuda"><CircleHelp size={19} /></button></div></header>
       {view === "dashboard" && <Dashboard operations={operations} totalInProgress={totalInProgress} totalValue={totalValue} onOpen={() => setView("imports")} />}
        {view === "imports" && !detailId && <OperationsListView operations={operations} onNew={() => setShowNewImport(true)} onOpen={openOperation} />}
        {view === "imports" && detailId && selected && <OperationDetailPage selected={selected} onBack={closeOperationDetail} onAddItem={() => setShowNewItem(true)} onUpdate={updateOperation} />}
-       {view === "ports" && selected && <PortsView operations={operations} selected={selected} onSelect={setSelectedId} onUpdate={updateOperation} />}
+       {view === "ports" && <PortsCatalogView facilities={portFacilities} state={portCatalogState} error={portCatalogError} onRetry={loadPortCatalog} />}
        {view === "customers" && <CustomersView customers={customers} operations={operations} onNew={() => { setEditingCustomer(null); setShowNewCustomer(true); }} onEdit={(customer) => { setEditingCustomer(customer); setShowNewCustomer(true); }} />}
        {["pending", "reports"].includes(view) && <Placeholder view={view} onNavigate={() => setView("imports")} />}
     </main>
@@ -179,9 +193,20 @@ function OperationHeader({ operation, onUpdate }: { operation: ImportOperation; 
   return <header className="operation-header panel"><div><p className="eyebrow">{operation.reference}</p><h2>{operation.customer}</h2><p className="muted">{operation.supplier} · {operation.container}</p></div><div className="operation-status"><label>Status da operação<select value={operation.status} onChange={(event) => onUpdate(operation.id, { status: event.target.value as ImportStatus })}>{Object.entries(importStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label><StatusBadge status={operation.status} /></div><div className="port-progress"><div><span className="port-pin"><MapPinned size={18} /></span><span><strong>{operation.port}</strong><small>ETA {formatDate(operation.eta)}</small></span></div><label>Status portuário<select value={operation.portStatus} onChange={(event) => onUpdate(operation.id, { portStatus: event.target.value as PortStatus })}>{Object.entries(portStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label></div></header>;
 }
 
-function PortsView({ operations, selected, onSelect, onUpdate }: { operations: ImportOperation[]; selected: ImportOperation; onSelect: (id: string) => void; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) {
-  const portStep = Object.keys(portStatusMeta).indexOf(selected.portStatus);
-  return <section className="page"><div className="page-heading"><div><p className="eyebrow">ACOMPANHAMENTO LOGÍSTICO</p><h1>Status nos portos</h1><p className="muted">Atualize o andamento informado pelo agente, terminal ou despachante.</p></div></div><div className="port-page-grid"><section className="panel compact-list"><h2>Importações em acompanhamento</h2>{operations.map((operation) => <button key={operation.id} className={operation.id === selected.id ? "is-selected" : ""} onClick={() => onSelect(operation.id)}><span><strong>{operation.reference}</strong><small>{operation.port}</small></span><span className="dot-status" data-status={operation.portStatus} /><ChevronRight size={17} /></button>)}</section><section className="panel route-card"><div className="route-header"><div><p className="eyebrow">{selected.reference}</p><h2>{selected.port}</h2><p>{selected.container} · ETA {formatDate(selected.eta)}</p></div><StatusBadge status={selected.status} /></div><div className="timeline">{Object.entries(portStatusMeta).map(([value, meta], index) => <div className={`timeline-step ${index <= portStep ? "is-done" : ""} ${value === selected.portStatus ? "is-current" : ""}`} key={value}><span>{index < portStep ? "✓" : index + 1}</span><div><strong>{meta.label}</strong><p>{meta.detail}</p></div></div>)}</div><div className="update-port"><label>Registrar status atual<select value={selected.portStatus} onChange={(event) => onUpdate(selected.id, { portStatus: event.target.value as PortStatus })}>{Object.entries(portStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label><p>Última atualização interna: {new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(selected.updatedAt))}.</p></div></section></div></section>;
+function PortsCatalogView({ facilities, state, error, onRetry }: { facilities: PortFacility[]; state: "idle" | "loading" | "ready" | "error"; error: string; onRetry: () => void }) {
+  const [query, setQuery] = useState("");
+  const [selectedState, setSelectedState] = useState("all");
+  const [selectedType, setSelectedType] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
+  const states = [...new Set(facilities.map((facility) => facility.state))].sort();
+  const types = [...new Set(facilities.map((facility) => facility.type))].sort();
+  const filtered = facilities.filter((facility) => (!query || `${facility.name} ${facility.municipality} ${facility.state}`.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))) && (selectedState === "all" || facility.state === selectedState) && (selectedType === "all" || facility.type === selectedType));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const resetPage = () => setPage(1);
+  return <section className="page ports-catalog-page"><div className="page-heading"><div><p className="eyebrow">DADOS DE REFERÊNCIA</p><h1>Instalações portuárias</h1><p className="muted">Catálogo oficial para padronizar portos e terminais nas operações de importação.</p></div><a className="button button--secondary" href="https://www.gov.br/antaq/pt-br/assuntos/instalacoes-portuarias" target="_blank" rel="noreferrer">Fonte: ANTAQ</a></div><section className="panel ports-catalog-panel"><div className="ports-catalog-context"><span><MapPinned size={18} aria-hidden="true" /><strong>{facilities.length || "—"}</strong> instalações publicadas</span><span>Referência administrativa; o andamento da carga é registrado dentro de cada operação.</span></div><div className="operations-toolbar ports-toolbar"><label className="search-field"><Search size={17} aria-hidden="true" /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPage(); }} placeholder="Buscar por instalação, cidade ou UF" aria-label="Buscar instalações portuárias" /></label><div className="operation-filters"><label><span className="sr-only">UF</span><select value={selectedState} onChange={(event) => { setSelectedState(event.target.value); resetPage(); }}><option value="all">Todas as UFs</option>{states.map((item) => <option value={item} key={item}>{item}</option>)}</select></label><label><span className="sr-only">Tipo</span><select value={selectedType} onChange={(event) => { setSelectedType(event.target.value); resetPage(); }}><option value="all">Todos os tipos</option>{types.map((item) => <option value={item} key={item}>{item}</option>)}</select></label></div></div>{state === "loading" && <div className="catalog-message" role="status">Consultando o catálogo de instalações portuárias…</div>}{state === "error" && <div className="catalog-message catalog-message--error" role="alert"><span>{error}</span><button className="button button--secondary" onClick={onRetry}>Tentar novamente</button></div>}{state === "ready" && <><div className="table-scroll"><table className="ports-table"><thead><tr><th>Instalação</th><th>Localização</th><th>Tipo</th><th>Gestão</th><th>Situação</th></tr></thead><tbody>{visible.length === 0 ? <tr><td className="empty-cell" colSpan={5}>Nenhuma instalação corresponde aos filtros.</td></tr> : visible.map((facility) => <tr key={facility.id}><td><strong>{facility.name}</strong><small>ID ANTAQ {facility.id}</small></td><td><strong>{facility.municipality}</strong><small>{facility.state}</small></td><td><span className="facility-type">{facility.type}</span></td><td>{facility.management || "Não informado"}</td><td><span className="facility-status">{facility.operationalStatus || "Não informado"}</span></td></tr>)}</tbody></table></div><footer className="pagination"><span>{filtered.length === 0 ? "Nenhuma instalação" : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filtered.length)} de ${filtered.length} instalações`}</span><div><button className="icon-button" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} aria-label="Página anterior"><ChevronLeft size={18} /></button><span>Página {currentPage} de {totalPages}</span><button className="icon-button" disabled={currentPage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} aria-label="Próxima página"><ChevronRight size={18} /></button></div></footer></>}</section></section>;
 }
 
 function ProductsTable({ calculated }: { calculated: ReturnType<typeof calculateImport> }) { return <div className="table-scroll"><table><thead><tr><th>Produto / NCM</th><th>Qtd.</th><th>FOB</th><th>Rateio</th><th>Tributos</th><th>Custo unitário</th></tr></thead><tbody>{calculated.items.length === 0 ? <tr><td colSpan={6} className="empty-cell">Adicione os produtos para calcular os custos.</td></tr> : calculated.items.map((item) => <tr key={item.id}><td><strong>{item.name}</strong><small>{item.ncm}</small></td><td>{item.quantity}</td><td>{money.format(item.itemFob)}</td><td>{money.format(item.allocatedExpenses)}</td><td>{money.format(item.ii + item.ipi)}</td><td><strong>{money.format(item.unitCost)}</strong></td></tr>)}</tbody></table></div>; }

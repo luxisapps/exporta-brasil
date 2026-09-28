@@ -25,6 +25,18 @@ export type Customer = {
   createdAt: string;
 };
 
+/** Registro de referência de uma instalação portuária publicada pela ANTAQ. */
+export type PortFacility = {
+  id: string;
+  name: string;
+  type: string;
+  state: string;
+  municipality: string;
+  operationalStatus: string;
+  management: string;
+  waterway: string | null;
+};
+
 export type ImportOperation = {
   id: string;
   reference: string;

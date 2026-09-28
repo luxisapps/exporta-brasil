@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import { calculateImport, type Customer, type ImportItem, type ImportOperation, type ImportStatus, type PortStatus } from "@exporta/domain";
+import { calculateImport, type Customer, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true });
 await app.register(cors, { origin: true });
@@ -8,6 +8,41 @@ await app.register(cors, { origin: true });
 const imports = new Map<string, ImportOperation>();
 const customers = new Map<string, Customer>();
 const now = new Date().toISOString();
+const antaqFacilitiesUrl = "https://geo.infrasa.gov.br/server/rest/services/Hosted/Instala%C3%A7%C3%B5es_portu%C3%A1rias/FeatureServer/0/query";
+const portCatalogCacheTtlMs = 24 * 60 * 60 * 1000;
+let portCatalogCache: { facilities: PortFacility[]; syncedAt: string; expiresAt: number } | null = null;
+
+type AntaqFeature = {
+  attributes: {
+    objectid: number;
+    nome: string;
+    tipo: string;
+    uf: string;
+    municipio: string;
+    situacao: string;
+    gestao: string;
+    hidrovia: string | null;
+  };
+};
+
+async function getPortCatalog() {
+  if (portCatalogCache && portCatalogCache.expiresAt > Date.now()) return portCatalogCache;
+  const params = new URLSearchParams({
+    f: "json", where: "1=1", outFields: "objectid,nome,tipo,uf,municipio,situacao,gestao,hidrovia",
+    returnGeometry: "false", resultRecordCount: "2000", orderByFields: "nome ASC"
+  });
+  const response = await fetch(`${antaqFacilitiesUrl}?${params}`);
+  if (!response.ok) throw new Error(`ANTAQ respondeu ${response.status}`);
+  const payload = await response.json() as { features?: AntaqFeature[] };
+  const facilities = (payload.features ?? []).map(({ attributes }) => ({
+    id: String(attributes.objectid), name: attributes.nome, type: attributes.tipo, state: attributes.uf,
+    municipality: attributes.municipio, operationalStatus: attributes.situacao, management: attributes.gestao,
+    waterway: attributes.hidrovia
+  }));
+  const syncedAt = new Date().toISOString();
+  portCatalogCache = { facilities, syncedAt, expiresAt: Date.now() + portCatalogCacheTtlMs };
+  return portCatalogCache;
+}
 
 const customerSeed: Customer[] = [
   { id: "customer-001", legalName: "Aurora Comércio e Importação Ltda.", tradeName: "Aurora Comércio", taxId: "12.345.678/0001-90", contactName: "Renata Prado", email: "renata@auroracomercio.com.br", phone: "+55 11 99999-1020", status: "active", createdAt: now },
@@ -40,6 +75,16 @@ const seed: ImportOperation = {
 imports.set(seed.id, seed);
 
 app.get("/health", async () => ({ status: "ok", service: "exporta-brasil-api" }));
+
+app.get("/api/port-facilities", async (request, reply) => {
+  try {
+    const catalog = await getPortCatalog();
+    return { data: catalog.facilities, total: catalog.facilities.length, source: "ANTAQ", syncedAt: catalog.syncedAt };
+  } catch (error) {
+    request.log.error(error, "Não foi possível consultar o catálogo da ANTAQ");
+    return reply.code(503).send({ message: "O catálogo de instalações portuárias está indisponível no momento." });
+  }
+});
 
 app.get("/api/customers", async () => [...customers.values()]);
 
