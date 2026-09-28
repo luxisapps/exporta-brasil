@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@exporta/domain": "*",
+    "@radix-ui/react-dialog": "^1.1.23",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
