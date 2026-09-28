@@ -48,6 +48,13 @@ app.post<{ Body: Omit<Customer, "id" | "createdAt" | "status"> & Partial<Pick<Cu
   return reply.code(201).send(customer);
 });
 
+app.patch<{ Params: { id: string }; Body: Partial<Omit<Customer, "id" | "createdAt">> }>("/api/customers/:id", async (request, reply) => {
+  const customer = customers.get(request.params.id);
+  if (!customer) return reply.code(404).send({ message: "Cliente não encontrado" });
+  Object.assign(customer, request.body);
+  return customer;
+});
+
 app.get("/api/imports", async () => [...imports.values()].map((operation) => ({ ...operation, summary: calculateImport(operation) })));
 
 app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) => {
