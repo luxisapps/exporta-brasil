@@ -159,8 +159,20 @@ function BackofficeApp({ session, onSessionUpdate, onLogout }: { session: { toke
     return payload;
   };
 
-  const updateOperation = (id: string, changes: Partial<ImportOperation>) => {
-    setOperations((current) => current.map((operation) => operation.id === id ? { ...operation, ...changes, updatedAt: new Date().toISOString() } : operation));
+  type OperationAudit = Pick<OperationTimelineEntry, "title" | "description" | "type">;
+  const updateOperation = (id: string, changes: Partial<ImportOperation>, audit?: OperationAudit) => {
+    setOperations((current) => current.map((operation) => {
+      if (operation.id !== id) return operation;
+      let automaticAudit: OperationAudit | undefined;
+      if (changes.assigneeId !== undefined && changes.assigneeId !== operation.assigneeId) automaticAudit = changes.assigneeName ? { title: "Responsável atribuído", description: `${changes.assigneeName} passou a acompanhar esta importação.`, type: "milestone" } : { title: "Responsável removido", description: "A importação ficou sem responsável definido.", type: "milestone" };
+      else if (changes.status && changes.status !== operation.status) automaticAudit = { title: "Status da operação atualizado", description: `Status alterado para ${importStatusMeta[changes.status].label}.`, type: "status" };
+      else if (changes.portStatus && changes.portStatus !== operation.portStatus) automaticAudit = { title: "Status portuário atualizado", description: `Etapa alterada para ${portStatusMeta[changes.portStatus].label}.`, type: "status" };
+      else if (changes.customsChannel && changes.customsChannel !== operation.customsChannel) automaticAudit = { title: "Canal aduaneiro atualizado", description: `Canal alterado para ${customsChannelMeta[changes.customsChannel].label}.`, type: "status" };
+      const record = audit ?? automaticAudit;
+      const recordedAt = new Date().toISOString();
+      const timeline = record ? [...operationTimeline(operation), { id: uid("timeline"), ...record, occurredAt: recordedAt, actorId: session.user.id, actorName: session.user.name, recordedAt }] : changes.timeline;
+      return { ...operation, ...changes, ...(timeline ? { timeline } : {}), updatedAt: recordedAt };
+    }));
   };
 
   const createOperation = (event: FormEvent<HTMLFormElement>) => {
@@ -173,7 +185,8 @@ function BackofficeApp({ session, onSessionUpdate, onLogout }: { session: { toke
       id: uid("imp"), reference: String(form.get("reference") || `EB-${new Date().getFullYear()}-${String(operations.length + 1).padStart(3, "0")}`),
       customerId, customer: customer.tradeName || customer.legalName, assigneeId: session.user.id, assigneeName: session.user.name, supplier: String(form.get("supplier")), port: String(form.get("port")),
       container: String(form.get("container")), eta: String(form.get("eta")), status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned",
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: []
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [],
+      timeline: [{ id: uid("timeline"), title: "Operação criada", description: "Processo aberto para acompanhamento operacional.", occurredAt: new Date().toISOString(), actorId: session.user.id, actorName: session.user.name, recordedAt: new Date().toISOString(), type: "milestone" }]
     };
     setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); openOperations();
   };
@@ -207,10 +220,10 @@ function BackofficeApp({ session, onSessionUpdate, onLogout }: { session: { toke
       unitPriceUsd: inputNumber(form.get("unitPriceUsd")), grossWeightKg: inputNumber(form.get("grossWeightKg")),
       iiRate: inputNumber(form.get("iiRate")), ipiRate: inputNumber(form.get("ipiRate"))
     };
-    updateOperation(selected.id, { items: editingItem ? selected.items.map((current) => current.id === item.id ? item : current) : [...selected.items, item] });
+    updateOperation(selected.id, { items: editingItem ? selected.items.map((current) => current.id === item.id ? item : current) : [...selected.items, item] }, { title: editingItem ? "Produto atualizado" : "Produto adicionado", description: `${item.name} foi ${editingItem ? "atualizado" : "incluído"} na importação.`, type: "milestone" });
     setEditingItem(null); setShowNewItem(false);
   };
-  const removeItem = () => { if (!selected || !itemToRemove) return; updateOperation(selected.id, { items: selected.items.filter((item) => item.id !== itemToRemove.id) }); setItemToRemove(null); };
+  const removeItem = () => { if (!selected || !itemToRemove) return; updateOperation(selected.id, { items: selected.items.filter((item) => item.id !== itemToRemove.id) }, { title: "Produto removido", description: `${itemToRemove.name} foi removido da importação.`, type: "milestone" }); setItemToRemove(null); };
   const addTimelineEntry = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); if (!selected) return;
     const form = new FormData(event.currentTarget);
@@ -221,15 +234,15 @@ function BackofficeApp({ session, onSessionUpdate, onLogout }: { session: { toke
     event.preventDefault(); if (!selected) return;
     const form = new FormData(event.currentTarget);
     const task: OperationTask = { id: uid("task"), title: String(form.get("title")), assignee: String(form.get("assignee")) || undefined, dueDate: String(form.get("dueDate")) || undefined, completed: false, createdAt: new Date().toISOString() };
-    updateOperation(selected.id, { tasks: [...operationTasks(selected), task] }); setShowOperationTask(false);
+    updateOperation(selected.id, { tasks: [...operationTasks(selected), task] }, { title: "Pendência criada", description: `${task.title}${task.assignee ? ` — responsável: ${task.assignee}` : ""}.`, type: "milestone" }); setShowOperationTask(false);
   };
   const addOperationDocument = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); if (!selected) return;
     const form = new FormData(event.currentTarget);
     const document: OperationDocument = { id: uid("document"), type: String(form.get("type")), title: String(form.get("title")), reference: String(form.get("reference")) || undefined, issuedAt: String(form.get("issuedAt")) || undefined, expiresAt: String(form.get("expiresAt")) || undefined, status: String(form.get("status")) as OperationDocument["status"], createdAt: new Date().toISOString() };
-    updateOperation(selected.id, { documents: [...(selected.documents ?? []), document] }); setShowOperationDocument(false);
+    updateOperation(selected.id, { documents: [...(selected.documents ?? []), document] }, { title: "Documento registrado", description: `${document.title} foi registrado na operação.`, type: "milestone" }); setShowOperationDocument(false);
   };
-  const completeOperationTask = (taskId: string) => { if (!selected) return; updateOperation(selected.id, { tasks: operationTasks(selected).map((task) => task.id === taskId ? { ...task, completed: !task.completed } : task) }); };
+  const completeOperationTask = (taskId: string) => { if (!selected) return; const task = operationTasks(selected).find((item) => item.id === taskId); if (!task) return; updateOperation(selected.id, { tasks: operationTasks(selected).map((item) => item.id === taskId ? { ...item, completed: !item.completed } : item) }, { title: task.completed ? "Pendência reaberta" : "Pendência concluída", description: task.title, type: "milestone" }); };
 
   const changeView = (next: View) => { window.history.pushState({}, "", viewUrl(next)); setView(next); setDetailId(null); setOperationsUrlState(window.location.search); setSidebarOpen(false); };
   const openOperations = (filters: Partial<OperationsFilters> = {}) => { const next = { ...operationsFiltersFromUrl(), ...filters }; const url = operationsUrl(next); window.history.pushState({}, "", url); setOperationsUrlState(window.location.search); setDetailId(null); setView("imports"); };
