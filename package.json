@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "npm run build --workspace=@exporta/domain && concurrently -n api,web -c blue,green \"npm run dev --workspace=@exporta/api\" \"npm run dev --workspace=@exporta/web\"",
     "build": "npm run build --workspace=@exporta/domain && npm run build --workspace=@exporta/api && npm run build --workspace=@exporta/web",
-    "typecheck": "npm run typecheck --workspace=@exporta/domain && npm run typecheck --workspace=@exporta/api && npm run typecheck --workspace=@exporta/web"
+    "typecheck": "npm run build --workspace=@exporta/domain && npm run typecheck --workspace=@exporta/api && npm run typecheck --workspace=@exporta/web"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

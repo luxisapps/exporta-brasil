@@ -10,7 +10,7 @@ Este é o roteiro de trabalho do Exporta Brasil. Cada fase termina com um result
 | 1. Scaffold do monorepo | Concluída (base temporária) | React 19, API Fastify e pacote de domínio executam localmente. |
 | 2. Sistema de UI executável | Concluída (MVP) | Shell responsivo, tokens e componentes da operação prontos. |
 | 3. Acesso e organizações | Pendente | Login, papéis e isolamento de dados testados. |
-| 4. Operações de importação | Pendente | Fluxo principal de operação e itens utilizável. |
+| 4. Operações de importação | Em andamento | Operações, itens, custos, status portuário e clientes no MVP local. |
 | 5. Documentos e packing list | Pendente | Upload, revisão e confirmação de itens funcionam. |
 | 6. Custos e fechamento | Pendente | Cenários, rateio, aprovação e XLSX rastreáveis. |
 | 7. Railway e entrega | Pendente | Staging e produção monitorados com migrations seguras. |
@@ -100,6 +100,13 @@ Este é o roteiro de trabalho do Exporta Brasil. Cada fase termina com um result
 3. Implementar transições de estado no servidor e bloqueios claros na interface.
 4. Exibir próxima ação, prazo, responsável, documentos pendentes e auditoria no detalhe.
 5. Testar regras de estado, escopo e rotas críticas.
+
+### Entregue no MVP local
+
+- Cadastro e consulta de clientes pelo menu lateral.
+- Criação de cliente durante a nova importação, sem perder o formulário aberto.
+- Vínculo automático do cliente recém-criado com a operação criada.
+- Contratos iniciais de clientes na API, ainda com persistência temporária.
 
 ### Você acompanha validando
 

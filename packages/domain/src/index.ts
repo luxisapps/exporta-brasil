@@ -13,9 +13,22 @@ export type ImportItem = {
   ipiRate: number;
 };
 
+export type Customer = {
+  id: string;
+  legalName: string;
+  tradeName: string;
+  taxId: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  status: "active" | "inactive";
+  createdAt: string;
+};
+
 export type ImportOperation = {
   id: string;
   reference: string;
+  customerId?: string;
   customer: string;
   supplier: string;
   port: string;

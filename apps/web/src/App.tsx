@@ -6,17 +6,18 @@ import {
 } from "lucide-react";
 import {
   calculateImport, importStatusMeta, portStatusMeta,
-  type ImportItem, type ImportOperation, type ImportStatus, type PortStatus
+  type Customer, type ImportItem, type ImportOperation, type ImportStatus, type PortStatus
 } from "@exporta/domain";
 
 type View = "dashboard" | "imports" | "ports" | "pending" | "customers" | "reports";
 
 const storageKey = "exporta-brasil-imports-v1";
+const customersStorageKey = "exporta-brasil-customers-v1";
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const initialOperations: ImportOperation[] = [{
-  id: "imp-001", reference: "EB-2026-001", customer: "Aurora Comércio", supplier: "Ningbo Horizon Co.",
+  id: "imp-001", reference: "EB-2026-001", customerId: "customer-001", customer: "Aurora Comércio", supplier: "Ningbo Horizon Co.",
   port: "Porto de Santos", container: "TGHU 812903-4", status: "customs", portStatus: "customs_clearance",
   eta: "2026-10-03", updatedAt: "2026-09-27T14:30:00.000Z", exchangeRate: 5.42,
   freightBrl: 18400, insuranceBrl: 1850, portExpensesBrl: 12680,
@@ -25,12 +26,17 @@ const initialOperations: ImportOperation[] = [{
     { id: "item-002", name: "Mochila executiva", ncm: "42029200", quantity: 720, unitPriceUsd: 11.7, grossWeightKg: 1.1, iiRate: 20, ipiRate: 10 }
   ]
 }, {
-  id: "imp-002", reference: "EB-2026-002", customer: "Casa Norte", supplier: "Qingdao Bright Ltd.",
+  id: "imp-002", reference: "EB-2026-002", customerId: "customer-002", customer: "Casa Norte", supplier: "Qingdao Bright Ltd.",
   port: "Porto de Itajaí", container: "TRHU 229140-6", status: "in_transit", portStatus: "in_transit",
   eta: "2026-10-16", updatedAt: "2026-09-26T11:00:00.000Z", exchangeRate: 5.38,
   freightBrl: 12600, insuranceBrl: 980, portExpensesBrl: 8200,
   items: [{ id: "item-003", name: "Organizador doméstico", ncm: "39249000", quantity: 1200, unitPriceUsd: 4.85, grossWeightKg: 0.45, iiRate: 18, ipiRate: 5 }]
 }];
+
+const initialCustomers: Customer[] = [
+  { id: "customer-001", legalName: "Aurora Comércio e Importação Ltda.", tradeName: "Aurora Comércio", taxId: "12.345.678/0001-90", contactName: "Renata Prado", email: "renata@auroracomercio.com.br", phone: "+55 11 99999-1020", status: "active", createdAt: "2026-09-01T09:00:00.000Z" },
+  { id: "customer-002", legalName: "Casa Norte Utilidades Ltda.", tradeName: "Casa Norte", taxId: "45.678.901/0001-23", contactName: "Marcelo Lima", email: "marcelo@casanorte.com.br", phone: "+55 47 98888-2040", status: "active", createdAt: "2026-09-05T09:00:00.000Z" }
+];
 
 const navigation: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Início", icon: LayoutDashboard },
@@ -50,12 +56,18 @@ export function App() {
   const [operations, setOperations] = useState<ImportOperation[]>(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || "") as ImportOperation[]; } catch { return initialOperations; }
   });
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try { return JSON.parse(localStorage.getItem(customersStorageKey) || "") as Customer[]; } catch { return initialCustomers; }
+  });
   const [selectedId, setSelectedId] = useState("imp-001");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNewImport, setShowNewImport] = useState(false);
   const [showNewItem, setShowNewItem] = useState(false);
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [importCustomerId, setImportCustomerId] = useState("");
 
   useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(operations)); }, [operations]);
+  useEffect(() => { localStorage.setItem(customersStorageKey, JSON.stringify(customers)); }, [customers]);
   const selected = operations.find((operation) => operation.id === selectedId) ?? operations[0];
   const totalInProgress = operations.filter((item) => !["completed", "cleared"].includes(item.status)).length;
   const totalValue = useMemo(() => operations.reduce((sum, operation) => sum + calculateImport(operation).totalCost, 0), [operations]);
@@ -67,13 +79,26 @@ export function App() {
   const createOperation = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const customerId = String(form.get("customerId"));
+    const customer = customers.find((item) => item.id === customerId);
+    if (!customer) return;
     const operation: ImportOperation = {
       id: uid("imp"), reference: String(form.get("reference") || `EB-${new Date().getFullYear()}-${String(operations.length + 1).padStart(3, "0")}`),
-      customer: String(form.get("customer")), supplier: String(form.get("supplier")), port: String(form.get("port")),
+      customerId, customer: customer.tradeName || customer.legalName, supplier: String(form.get("supplier")), port: String(form.get("port")),
       container: String(form.get("container")), eta: String(form.get("eta")), status: "draft", portStatus: "awaiting_departure",
       updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: []
     };
-    setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setShowNewImport(false); setView("imports");
+    setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); setView("imports");
+  };
+
+  const createCustomer = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const customer: Customer = {
+      id: uid("customer"), legalName: String(form.get("legalName")), tradeName: String(form.get("tradeName")) || String(form.get("legalName")),
+      taxId: String(form.get("taxId")), contactName: String(form.get("contactName")), email: String(form.get("email")), phone: String(form.get("phone")), status: "active", createdAt: new Date().toISOString()
+    };
+    setCustomers((current) => [customer, ...current]); setImportCustomerId(customer.id); setShowNewCustomer(false);
   };
 
   const addItem = (event: FormEvent<HTMLFormElement>) => {
@@ -99,12 +124,14 @@ export function App() {
       <header className="topbar"><button className="icon-button mobile-only" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu"><Menu size={21} /></button><div className="breadcrumb"><span>Operações</span><ChevronRight size={15} /><strong>{view === "dashboard" ? "Visão geral" : navigation.find((item) => item.id === view)?.label}</strong></div><div className="top-actions"><button className="icon-button" aria-label="Buscar"><Search size={19} /></button><button className="icon-button notification" aria-label="Notificações"><Bell size={19} /><i /></button><button className="icon-button" aria-label="Ajuda"><CircleHelp size={19} /></button></div></header>
       {view === "dashboard" && <Dashboard operations={operations} totalInProgress={totalInProgress} totalValue={totalValue} onOpen={() => setView("imports")} />}
       {view === "imports" && selected && <OperationsView operations={operations} selected={selected} onSelect={setSelectedId} onNew={() => setShowNewImport(true)} onAddItem={() => setShowNewItem(true)} onUpdate={updateOperation} />}
-      {view === "ports" && selected && <PortsView operations={operations} selected={selected} onSelect={setSelectedId} onUpdate={updateOperation} />}
-      {["pending", "customers", "reports"].includes(view) && <Placeholder view={view} onNavigate={() => setView("imports")} />}
+       {view === "ports" && selected && <PortsView operations={operations} selected={selected} onSelect={setSelectedId} onUpdate={updateOperation} />}
+       {view === "customers" && <CustomersView customers={customers} operations={operations} onNew={() => setShowNewCustomer(true)} />}
+       {["pending", "reports"].includes(view) && <Placeholder view={view} onNavigate={() => setView("imports")} />}
     </main>
     <nav className="bottom-nav" aria-label="Navegação móvel">{navigation.slice(0, 4).map(({ id, label, icon: Icon }) => <button key={id} className={view === id ? "is-active" : ""} onClick={() => changeView(id)}><Icon size={19} /><span>{label}</span></button>)}</nav>
-    {showNewImport && <Dialog title="Nova importação" onClose={() => setShowNewImport(false)}><ImportForm onSubmit={createOperation} /></Dialog>}
+    {showNewImport && <Dialog title="Nova importação" onClose={() => { setShowNewImport(false); setImportCustomerId(""); }}><ImportForm customers={customers} customerId={importCustomerId} onCustomerChange={setImportCustomerId} onNewCustomer={() => setShowNewCustomer(true)} onSubmit={createOperation} /></Dialog>}
     {showNewItem && <Dialog title="Adicionar produto" onClose={() => setShowNewItem(false)}><ItemForm onSubmit={addItem} /></Dialog>}
+    {showNewCustomer && <Dialog title="Novo cliente" onClose={() => setShowNewCustomer(false)}><CustomerForm onSubmit={createCustomer} /></Dialog>}
   </div>;
 }
 
@@ -144,6 +171,8 @@ function Summary({ label, value, detail }: { label: string; value: string; detai
 function Metric({ icon, label, value, detail, tone }: { icon: ReactNode; label: string; value: string; detail: string; tone: string }) { return <section className={`metric-card tone-${tone}`}><span className="metric-icon">{icon}</span><p>{label}</p><strong>{value}</strong><small>{detail}</small></section>; }
 function StatusBadge({ status }: { status: ImportStatus }) { const meta = importStatusMeta[status]; return <span className={`status status--${meta.tone}`}>{meta.label}</span>; }
 function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) { return <div className="dialog-backdrop" role="presentation"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><header><h2 id="dialog-title">{title}</h2><button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={20} /></button></header>{children}</section></div>; }
-function ImportForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void }) { return <form className="form-grid" onSubmit={onSubmit}><label className="field"><span>Referência</span><input name="reference" placeholder="EB-2026-003" /></label><label className="field"><span>Cliente</span><input name="customer" required placeholder="Nome do cliente" /></label><label className="field"><span>Fornecedor</span><input name="supplier" required placeholder="Fornecedor internacional" /></label><label className="field"><span>Porto de destino</span><input name="port" required defaultValue="Porto de Santos" /></label><label className="field"><span>Contêiner</span><input name="container" required placeholder="ABCD 123456-7" /></label><label className="field"><span>ETA</span><input name="eta" type="date" required /></label><button className="button button--primary form-submit" type="submit"><Plus size={18} /> Criar importação</button></form>; }
+function ImportForm({ customers, customerId, onCustomerChange, onNewCustomer, onSubmit }: { customers: Customer[]; customerId: string; onCustomerChange: (id: string) => void; onNewCustomer: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) { return <form className="form-grid" onSubmit={onSubmit}><label className="field"><span>Referência</span><input name="reference" placeholder="EB-2026-003" /></label><div className="field"><span>Cliente</span><div className="customer-picker"><select name="customerId" required value={customerId} onChange={(event) => onCustomerChange(event.target.value)}><option value="">Selecione um cliente</option>{customers.filter((customer) => customer.status === "active").map((customer) => <option value={customer.id} key={customer.id}>{customer.tradeName || customer.legalName} · {customer.taxId}</option>)}</select><button className="text-button" type="button" onClick={onNewCustomer}><Plus size={15} /> Novo cliente</button></div></div><label className="field"><span>Fornecedor</span><input name="supplier" required placeholder="Fornecedor internacional" /></label><label className="field"><span>Porto de destino</span><input name="port" required defaultValue="Porto de Santos" /></label><label className="field"><span>Contêiner</span><input name="container" required placeholder="ABCD 123456-7" /></label><label className="field"><span>ETA</span><input name="eta" type="date" required /></label><button className="button button--primary form-submit" type="submit"><Plus size={18} /> Criar importação</button></form>; }
 function ItemForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void }) { return <form className="form-grid" onSubmit={onSubmit}><label className="field full"><span>Produto</span><input name="name" required placeholder="Descrição comercial" /></label><label className="field"><span>NCM</span><input name="ncm" required inputMode="numeric" placeholder="00000000" /></label><label className="field"><span>Quantidade</span><input name="quantity" required type="number" min="1" /></label><label className="field"><span>Preço unitário (US$)</span><input name="unitPriceUsd" required type="number" min="0" step="0.01" /></label><label className="field"><span>Peso bruto unitário (kg)</span><input name="grossWeightKg" required type="number" min="0" step="0.01" /></label><label className="field"><span>II (%)</span><input name="iiRate" required type="number" min="0" step="0.01" defaultValue="18" /></label><label className="field"><span>IPI (%)</span><input name="ipiRate" required type="number" min="0" step="0.01" defaultValue="0" /></label><button className="button button--primary form-submit" type="submit"><PackagePlus size={18} /> Adicionar produto</button></form>; }
+function CustomerForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void }) { return <form className="form-grid" onSubmit={onSubmit}><label className="field full"><span>Razão social</span><input name="legalName" required placeholder="Empresa Importadora Ltda." /></label><label className="field"><span>Nome fantasia</span><input name="tradeName" placeholder="Como será exibido no sistema" /></label><label className="field"><span>CNPJ</span><input name="taxId" required inputMode="numeric" placeholder="00.000.000/0000-00" /></label><label className="field"><span>Responsável</span><input name="contactName" required placeholder="Nome do contato" /></label><label className="field"><span>E-mail</span><input name="email" required type="email" placeholder="contato@empresa.com.br" /></label><label className="field"><span>Telefone</span><input name="phone" required type="tel" placeholder="+55 11 99999-9999" /></label><button className="button button--primary form-submit" type="submit"><Users size={18} /> Salvar cliente</button></form>; }
+function CustomersView({ customers, operations, onNew }: { customers: Customer[]; operations: ImportOperation[]; onNew: () => void }) { const [query, setQuery] = useState(""); const visibleCustomers = customers.filter((customer) => `${customer.legalName} ${customer.tradeName} ${customer.taxId}`.toLowerCase().includes(query.toLowerCase())); return <section className="page"><div className="page-heading"><div><p className="eyebrow">CADASTRO E RELACIONAMENTO</p><h1>Clientes</h1><p className="muted">Empresas vinculadas às operações de importação.</p></div><button className="button button--primary" onClick={onNew}><Plus size={18} /> Novo cliente</button></div><section className="panel customers-panel"><div className="customers-toolbar"><label className="search-field"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por empresa ou CNPJ" aria-label="Buscar clientes" /></label><span>{visibleCustomers.length} cliente{visibleCustomers.length === 1 ? "" : "s"}</span></div><div className="table-scroll"><table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Responsável</th><th>Contato</th><th>Operações</th><th>Status</th></tr></thead><tbody>{visibleCustomers.length === 0 ? <tr><td className="empty-cell" colSpan={6}>Nenhum cliente encontrado.</td></tr> : visibleCustomers.map((customer) => <tr key={customer.id}><td><strong>{customer.tradeName || customer.legalName}</strong><small>{customer.legalName}</small></td><td>{customer.taxId}</td><td>{customer.contactName}</td><td><strong>{customer.email}</strong><small>{customer.phone}</small></td><td>{operations.filter((operation) => operation.customerId === customer.id || operation.customer === customer.tradeName).length}</td><td><span className={`status status--${customer.status === "active" ? "success" : "neutral"}`}>{customer.status === "active" ? "Ativo" : "Inativo"}</span></td></tr>)}</tbody></table></div></section></section>; }
 function Placeholder({ view, onNavigate }: { view: View; onNavigate: () => void }) { const title = navigation.find((item) => item.id === view)?.label ?? "Módulo"; return <section className="page"><div className="placeholder panel"><span><Archive size={28} /></span><p className="eyebrow">PRÓXIMA FRENTE</p><h1>{title}</h1><p>Este módulo já está reservado na arquitetura. A primeira entrega concentra a operação de importação ponta a ponta.</p><button className="button button--secondary" onClick={onNavigate}>Abrir operações</button></div></section>; }

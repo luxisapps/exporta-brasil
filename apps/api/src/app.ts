@@ -1,16 +1,24 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import { calculateImport, type ImportItem, type ImportOperation, type ImportStatus, type PortStatus } from "@exporta/domain";
+import { calculateImport, type Customer, type ImportItem, type ImportOperation, type ImportStatus, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true });
 await app.register(cors, { origin: true });
 
 const imports = new Map<string, ImportOperation>();
+const customers = new Map<string, Customer>();
 const now = new Date().toISOString();
+
+const customerSeed: Customer[] = [
+  { id: "customer-001", legalName: "Aurora Comércio e Importação Ltda.", tradeName: "Aurora Comércio", taxId: "12.345.678/0001-90", contactName: "Renata Prado", email: "renata@auroracomercio.com.br", phone: "+55 11 99999-1020", status: "active", createdAt: now },
+  { id: "customer-002", legalName: "Casa Norte Utilidades Ltda.", tradeName: "Casa Norte", taxId: "45.678.901/0001-23", contactName: "Marcelo Lima", email: "marcelo@casanorte.com.br", phone: "+55 47 98888-2040", status: "active", createdAt: now }
+];
+customerSeed.forEach((customer) => customers.set(customer.id, customer));
 
 const seed: ImportOperation = {
   id: "imp-001",
   reference: "EB-2026-001",
+  customerId: "customer-001",
   customer: "Aurora Comércio",
   supplier: "Ningbo Horizon Co.",
   port: "Porto de Santos",
@@ -32,6 +40,14 @@ imports.set(seed.id, seed);
 
 app.get("/health", async () => ({ status: "ok", service: "exporta-brasil-api" }));
 
+app.get("/api/customers", async () => [...customers.values()]);
+
+app.post<{ Body: Omit<Customer, "id" | "createdAt" | "status"> & Partial<Pick<Customer, "status">> }>("/api/customers", async (request, reply) => {
+  const customer: Customer = { id: `customer-${crypto.randomUUID()}`, ...request.body, status: request.body.status ?? "active", createdAt: new Date().toISOString() };
+  customers.set(customer.id, customer);
+  return reply.code(201).send(customer);
+});
+
 app.get("/api/imports", async () => [...imports.values()].map((operation) => ({ ...operation, summary: calculateImport(operation) })));
 
 app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) => {
@@ -40,7 +56,7 @@ app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) =
   return { ...operation, summary: calculateImport(operation) };
 });
 
-app.post<{ Body: Pick<ImportOperation, "reference" | "customer" | "supplier" | "port" | "container" | "eta"> }>("/api/imports", async (request, reply) => {
+app.post<{ Body: Pick<ImportOperation, "reference" | "customer" | "customerId" | "supplier" | "port" | "container" | "eta"> }>("/api/imports", async (request, reply) => {
   const id = `imp-${crypto.randomUUID()}`;
   const operation: ImportOperation = { id, ...request.body, status: "draft", portStatus: "awaiting_departure", updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
   imports.set(id, operation);
