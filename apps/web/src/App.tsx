@@ -81,7 +81,7 @@ function InitialPasswordScreen({ session, onAuthenticated }: { session: { token:
 function BackofficeApp({ session, onLogout }: { session: { token: string; user: SessionUser }; onLogout: () => void }) {
   const [view, setView] = useState<View>(viewFromPath);
   const [operations, setOperations] = useState<ImportOperation[]>(() => {
-    try { return (JSON.parse(localStorage.getItem(storageKey) || "") as Array<Partial<ImportOperation>>).map((operation) => ({ ...operation, customsChannel: operation.customsChannel === "gray" && ["in_transit", "customs_clearance"].includes(operation.portStatus ?? "") ? "pending" : operation.customsChannel ?? "pending" } as ImportOperation)); } catch { return initialOperations; }
+    try { const stored = JSON.parse(localStorage.getItem(storageKey) || "") as Array<Partial<ImportOperation>>; if (!Array.isArray(stored)) throw new Error("Formato inválido"); return stored.map((operation) => ({ ...operation, items: Array.isArray(operation.items) ? operation.items : [], timeline: Array.isArray(operation.timeline) ? operation.timeline : [], tasks: Array.isArray(operation.tasks) ? operation.tasks : [], documents: Array.isArray(operation.documents) ? operation.documents : [], status: operation.status && operation.status in importStatusMeta ? operation.status : "draft", portStatus: operation.portStatus && operation.portStatus in portStatusMeta ? operation.portStatus : "awaiting_departure", eta: operation.eta || new Date().toISOString().slice(0, 10), customsChannel: operation.customsChannel === "gray" && ["in_transit", "customs_clearance"].includes(operation.portStatus ?? "") ? "pending" : operation.customsChannel ?? "pending" } as ImportOperation)); } catch { return initialOperations; }
   });
   const [customers, setCustomers] = useState<Customer[]>(() => {
     try { return JSON.parse(localStorage.getItem(customersStorageKey) || "") as Customer[]; } catch { return initialCustomers; }
@@ -272,9 +272,11 @@ function OperationsListView({ operations, urlState, onFiltersChange, onNew, onOp
 
 function operationTimeline(operation: ImportOperation): OperationTimelineEntry[] {
   if (operation.timeline?.length) return operation.timeline;
+  const status = importStatusMeta[operation.status] ?? importStatusMeta.draft;
+  const portStatus = portStatusMeta[operation.portStatus] ?? portStatusMeta.awaiting_departure;
   return [
     { id: "created", title: "Operação criada", description: "Processo aberto para acompanhamento operacional.", occurredAt: operation.createdAt, type: "milestone" },
-    { id: "current-status", title: importStatusMeta[operation.status].label, description: portStatusMeta[operation.portStatus].detail, occurredAt: operation.updatedAt, type: "status" }
+    { id: "current-status", title: status.label, description: portStatus.detail, occurredAt: operation.updatedAt, type: "status" }
   ];
 }
 function operationTasks(operation: ImportOperation): OperationTask[] {
