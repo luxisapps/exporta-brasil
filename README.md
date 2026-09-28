@@ -14,6 +14,13 @@ npm run dev
 - Cliente: `http://localhost:5173`
 - API: `http://localhost:3171/health`
 
+## Ambiente de teste
+
+- API Railway: [health check](https://exporta-brasil-production.up.railway.app/health) · [importações de demonstração](https://exporta-brasil-production.up.railway.app/api/imports)
+- Cliente local: `http://localhost:5173`
+
+O Railway possui um serviço de API e um PostgreSQL isolado. `DATABASE_URL` é resolvida internamente pelo Railway e não é armazenada no repositório.
+
 Neste estágio, o cliente guarda os dados de demonstração no navegador e a API usa memória. A próxima etapa troca essas duas persistências temporárias por PostgreSQL com Drizzle, sem mudar os contratos do domínio.
 
 ## Documentação de base
