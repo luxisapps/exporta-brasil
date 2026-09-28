@@ -16,6 +16,34 @@ export type ImportItem = {
   ipiRate: number;
 };
 
+export type OperationTimelineEntry = {
+  id: string;
+  title: string;
+  description?: string;
+  occurredAt: string;
+  type: "milestone" | "status" | "note";
+};
+
+export type OperationTask = {
+  id: string;
+  title: string;
+  assignee?: string;
+  dueDate?: string;
+  completed: boolean;
+  createdAt: string;
+};
+
+export type OperationDocument = {
+  id: string;
+  type: string;
+  title: string;
+  reference?: string;
+  issuedAt?: string;
+  expiresAt?: string;
+  status: "pending" | "available" | "expired";
+  createdAt: string;
+};
+
 export type Customer = {
   id: string;
   legalName: string;
@@ -67,6 +95,9 @@ export type ImportOperation = {
   insuranceBrl: number;
   portExpensesBrl: number;
   items: ImportItem[];
+  timeline?: OperationTimelineEntry[];
+  tasks?: OperationTask[];
+  documents?: OperationDocument[];
 };
 
 export const importStatusMeta: Record<ImportStatus, { label: string; tone: "neutral" | "info" | "warning" | "success" }> = {
