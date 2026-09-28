@@ -175,6 +175,21 @@ app.get("/api/market-context", async (request, reply) => {
   }
 });
 
+app.get<{ Params: { cep: string } }>("/api/addresses/:cep", async (request, reply) => {
+  const cep = request.params.cep.replace(/\D/g, "");
+  if (cep.length !== 8) return reply.code(400).send({ message: "Informe um CEP com 8 dígitos." });
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`, { headers: { accept: "application/json" } });
+    if (!response.ok) return reply.code(502).send({ message: "A consulta de CEP está indisponível no momento." });
+    const address = await response.json() as { erro?: boolean; cep?: string; logradouro?: string; complemento?: string; bairro?: string; localidade?: string; uf?: string };
+    if (address.erro) return reply.code(404).send({ message: "CEP não encontrado." });
+    return { postalCode: address.cep, street: address.logradouro, complement: address.complemento, district: address.bairro, city: address.localidade, state: address.uf };
+  } catch (error) {
+    request.log.error(error, "Falha na consulta ViaCEP");
+    return reply.code(503).send({ message: "A consulta de CEP está indisponível no momento." });
+  }
+});
+
 app.get<{ Params: { cnpj: string } }>("/api/companies/:cnpj", async (request, reply) => {
   const cnpj = cnpjRaw(request.params.cnpj);
   if (!isValidCnpj(cnpj)) return reply.code(400).send({ message: "CNPJ inválido." });
