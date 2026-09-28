@@ -44,9 +44,11 @@ const r2Enabled = Boolean(r2Endpoint && r2AccessKeyId && r2SecretAccessKey && r2
 const r2Client = r2Enabled ? new S3Client({ region: "auto", endpoint: r2Endpoint, forcePathStyle: true, credentials: { accessKeyId: r2AccessKeyId!, secretAccessKey: r2SecretAccessKey! } }) : null;
 const avatarContentTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+type MarketNewsSource = "Siscomex" | "ANTAQ" | "MDIC";
+type MarketNews = { title: string; url: string; publishedAt?: string; source: MarketNewsSource };
 type MarketContext = {
   dollar: { buy: number; sell: number; quotedAt: string; source: "BCB PTAX" };
-  news: Array<{ title: string; url: string; publishedAt?: string; source: "Siscomex" }>;
+  news: MarketNews[];
   updatedAt: string;
 };
 
@@ -129,21 +131,57 @@ async function getPtaxDollar() {
   throw new Error("A PTAX não retornou uma cotação recente.");
 }
 
-const decodeXml = (value: string) => value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#8211;/g, "–").trim();
-async function getSiscomexNews() {
-  const response = await fetch("https://www.gov.br/siscomex/pt-br/noticias/rss.xml", { headers: { accept: "application/rss+xml, application/xml" } });
-  if (!response.ok) throw new Error(`Siscomex respondeu ${response.status}`);
+const decodeXml = (value: string) => value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#8211;/g, "–").replace(/&#8217;/g, "’").trim();
+const rssNewsSources: Array<{ source: MarketNewsSource; url: string; relevance: RegExp }> = [
+  { source: "MDIC", url: "https://www.gov.br/mdic/pt-br/assuntos/noticias/rss.xml", relevance: /comércio exterior|importa|exporta|tarifa|mercosul|acordo comercial|comex/i }
+];
+const officialPageNewsSources: Array<{ source: Extract<MarketNewsSource, "Siscomex" | "ANTAQ">; url: string; relevance: RegExp }> = [
+  { source: "Siscomex", url: "https://www.gov.br/siscomex/pt-br/noticias/noticias-siscomex-importacao", relevance: /importa|aduana|duimp|licen|tratamento|tribut|inmetro|portal único|siscomex/i },
+  { source: "ANTAQ", url: "https://www.gov.br/antaq/pt-br/noticias", relevance: /porto|portu|terminal|conten|navega|hidrovia|carga|atraca/i }
+];
+const stripMarkup = (value: string) => decodeXml(value.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+const toIsoBrazilianDate = (value: string) => {
+  const match = value.match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2})h?(\d{2})?)?/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}T${match[4] ?? "00"}:${match[5] ?? "00"}:00-03:00` : undefined;
+};
+async function getRssNews(source: typeof rssNewsSources[number]) {
+  const response = await fetch(source.url, { headers: { accept: "application/rss+xml, application/xml, text/xml" }, signal: AbortSignal.timeout(8_000) });
+  if (!response.ok) throw new Error(`${source.source} respondeu ${response.status}`);
   const xml = await response.text();
   const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((match) => {
     const item = match[1];
-    const field = (name: string) => decodeXml(item.match(new RegExp(`<${name}>([\\s\\S]*?)<\\/${name}>`))?.[1] ?? "");
-    return { title: field("title"), url: field("link") || field("guid"), publishedAt: field("pubDate") || undefined, source: "Siscomex" as const };
+    const field = (name: string) => decodeXml(item.match(new RegExp(`<${name}>([\s\S]*?)<\/${name}>`))?.[1] ?? "");
+    return { title: field("title"), url: field("link") || field("guid"), publishedAt: field("pubDate") || field("dc:date") || undefined, source: source.source } satisfies MarketNews;
   }).filter((item) => item.title && item.url);
-  return [...items.filter((item) => /importa|aduana|duimp/i.test(item.title)), ...items.filter((item) => !/importa|aduana|duimp/i.test(item.title))].slice(0, 3);
+  const relevant = items.filter((item) => source.relevance.test(item.title));
+  return (relevant.length ? relevant : items).slice(0, 6);
+}
+async function getOfficialPageNews(source: typeof officialPageNewsSources[number]) {
+  const response = await fetch(source.url, { headers: { accept: "text/html" }, signal: AbortSignal.timeout(8_000) });
+  if (!response.ok) throw new Error(`${source.source} respondeu ${response.status}`);
+  const html = await response.text();
+  const items = source.source === "Siscomex"
+    ? [...html.matchAll(/<article[^>]*>([\s\S]*?)<\/article>/g)].map((match) => {
+      const article = match[1];
+      const link = article.match(/<h2 class="tileHeadline">[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+      const description = article.match(/<span class="description">([\s\S]*?)<\/span>/)?.[1] ?? "";
+      const date = article.match(/(\d{2}\/\d{2}\/\d{4}(?:\s*\d{2}h\d{2})?)/)?.[1] ?? "";
+      return { title: [link?.[2] ? stripMarkup(link[2]) : "", stripMarkup(description)].filter(Boolean).join(" — "), url: link?.[1] ?? "", publishedAt: toIsoBrazilianDate(date), source: source.source } satisfies MarketNews;
+    })
+    : [...html.matchAll(/<h2 class="titulo">[\s\S]*?<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<span class="data">\s*([^<]+)[\s\S]*?<\/span>/g)].map((match) => ({ title: stripMarkup(match[2]), url: match[1], publishedAt: toIsoBrazilianDate(match[3]), source: source.source } satisfies MarketNews));
+  const valid = items.filter((item) => item.title && item.url);
+  const relevant = valid.filter((item) => source.relevance.test(item.title));
+  return (relevant.length ? relevant : valid).slice(0, 6);
+}
+async function getMarketNews() {
+  const results = await Promise.allSettled([...rssNewsSources.map(getRssNews), ...officialPageNewsSources.map(getOfficialPageNews)]);
+  const news = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+  const unique = [...new Map(news.map((item) => [`${item.url}|${item.title}`, item])).values()];
+  return unique.sort((left, right) => Date.parse(right.publishedAt ?? "") - Date.parse(left.publishedAt ?? "")).slice(0, 9);
 }
 async function getMarketContext() {
   if (marketContextCache && marketContextCache.expiresAt > Date.now()) return marketContextCache.data;
-  const [dollar, news] = await Promise.all([getPtaxDollar(), getSiscomexNews().catch(() => [])]);
+  const [dollar, news] = await Promise.all([getPtaxDollar(), getMarketNews()]);
   const data: MarketContext = { dollar, news, updatedAt: new Date().toISOString() };
   marketContextCache = { data, expiresAt: Date.now() + marketContextCacheTtlMs };
   return data;
