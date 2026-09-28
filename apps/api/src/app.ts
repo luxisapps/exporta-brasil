@@ -266,7 +266,7 @@ app.post("/api/me/avatar", async (request, reply) => {
   return safeUser(user);
 });
 
-app.get("/api/users", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user || user.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); return [...users.values()].map(safeUser); });
+app.get("/api/users", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." }); return [...users.values()].map(safeUser); });
 app.post<{ Body: { name: string; email: string; role: UserRole; initialPassword: string } }>("/api/users", async (request, reply) => { const admin = sessionUser(request.headers.authorization); if (!admin || admin.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); if (request.body.initialPassword.length < 8) return reply.code(400).send({ message: "A senha inicial deve ter ao menos 8 caracteres." }); if ([...users.values()].some((item) => item.email === request.body.email.trim().toLowerCase())) return reply.code(409).send({ message: "Este e-mail já está cadastrado." }); const user: User = { id: `user-${crypto.randomUUID()}`, name: request.body.name.trim(), email: request.body.email.trim().toLowerCase(), role: request.body.role, passwordHash: hashPassword(request.body.initialPassword), mustChangePassword: true, createdAt: new Date().toISOString() }; users.set(user.id, user); await persistUser(user); return reply.code(201).send(safeUser(user)); });
 
 app.get("/api/port-facilities", async (request, reply) => {

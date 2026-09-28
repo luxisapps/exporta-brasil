@@ -22,6 +22,10 @@ export type OperationTimelineEntry = {
   title: string;
   description?: string;
   occurredAt: string;
+  /** Pessoa que registrou a atualização, distinta da data do evento operacional. */
+  actorId?: string;
+  actorName?: string;
+  recordedAt?: string;
   type: "milestone" | "status" | "note";
 };
 
@@ -82,6 +86,8 @@ export type ImportOperation = {
   reference: string;
   customerId?: string;
   customer: string;
+  assigneeId?: string;
+  assigneeName?: string;
   supplier: string;
   port: string;
   container: string;
