@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import fastifyMultipart from "@fastify/multipart";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { Pool } from "pg";
 import { calculateImport, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
@@ -21,7 +22,11 @@ const hashPassword = (password: string) => { const salt = randomBytes(16).toStri
 const verifyPassword = (password: string, stored: string) => { const [salt, hash] = stored.split(":"); const candidate = scryptSync(password, salt, 64); return timingSafeEqual(candidate, Buffer.from(hash, "hex")); };
 const safeUser = ({ passwordHash: _passwordHash, ...user }: User) => user;
 const initialAdmin: User = { id: "user-admin", name: process.env.ADMIN_NAME || "Administrador", email: (process.env.ADMIN_EMAIL || "admin@exportabrasil.com").toLowerCase(), role: "admin", passwordHash: hashPassword(process.env.ADMIN_INITIAL_PASSWORD || "exporta123"), mustChangePassword: true, createdAt: now };
-users.set(initialAdmin.id, initialAdmin);
+const databaseUrl = process.env.DATABASE_URL;
+let database: Pool | null = null;
+const userFromRow = (row: Record<string, unknown>): User => ({ id: String(row.id), name: String(row.name), email: String(row.email), role: row.role === "admin" ? "admin" : "operator", passwordHash: String(row.password_hash), mustChangePassword: Boolean(row.must_change_password), createdAt: new Date(String(row.created_at)).toISOString(), phone: typeof row.phone === "string" ? row.phone : undefined, jobTitle: typeof row.job_title === "string" ? row.job_title : undefined, avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url : undefined });
+async function persistUser(user: User) { if (!database) return; await database.query(`INSERT INTO app_users (id, name, email, role, password_hash, must_change_password, created_at, phone, job_title, avatar_url) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, role=EXCLUDED.role, password_hash=EXCLUDED.password_hash, must_change_password=EXCLUDED.must_change_password, phone=EXCLUDED.phone, job_title=EXCLUDED.job_title, avatar_url=EXCLUDED.avatar_url`, [user.id, user.name, user.email, user.role, user.passwordHash, user.mustChangePassword, user.createdAt, user.phone ?? null, user.jobTitle ?? null, user.avatarUrl ?? null]); }
+async function initializeUserStore() { if (!databaseUrl) { users.set(initialAdmin.id, initialAdmin); app.log.warn("DATABASE_URL ausente; usuários serão mantidos apenas em memória."); return; } database = new Pool({ connectionString: databaseUrl }); await database.query(`CREATE TABLE IF NOT EXISTS app_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, role TEXT NOT NULL CHECK (role IN ('admin','operator')), password_hash TEXT NOT NULL, must_change_password BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), phone TEXT, job_title TEXT, avatar_url TEXT)`); const result = await database.query("SELECT id, name, email, role, password_hash, must_change_password, created_at, phone, job_title, avatar_url FROM app_users"); if (result.rows.length === 0) { users.set(initialAdmin.id, initialAdmin); await persistUser(initialAdmin); return; } result.rows.forEach((row) => { const user = userFromRow(row); users.set(user.id, user); }); }
 const sessionUser = (authorization?: string) => { const token = authorization?.replace(/^Bearer\s+/i, ""); const session = token ? sessions.get(token) : undefined; return session && session.expiresAt > Date.now() ? users.get(session.userId) : undefined; };
 const antaqFacilitiesUrl = "https://geo.infrasa.gov.br/server/rest/services/Hosted/Instala%C3%A7%C3%B5es_portu%C3%A1rias/FeatureServer/0/query";
 const portCatalogCacheTtlMs = 24 * 60 * 60 * 1000;
@@ -231,7 +236,7 @@ app.post<{ Body: { email: string; password: string } }>("/api/auth/login", async
 app.post<{ Body: { password: string } }>("/api/auth/change-password", async (request, reply) => {
   const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." });
   if (request.body.password.length < 8) return reply.code(400).send({ message: "A senha deve ter ao menos 8 caracteres." });
-  user.passwordHash = hashPassword(request.body.password); user.mustChangePassword = false; return { user: safeUser(user) };
+  user.passwordHash = hashPassword(request.body.password); user.mustChangePassword = false; await persistUser(user); return { user: safeUser(user) };
 });
 app.get("/api/me", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." }); return safeUser(user); });
 app.patch<{ Body: { name?: string; phone?: string; jobTitle?: string; avatarUrl?: string | null } }>("/api/me", async (request, reply) => {
@@ -241,6 +246,7 @@ app.patch<{ Body: { name?: string; phone?: string; jobTitle?: string; avatarUrl?
   if (typeof phone === "string") user.phone = phone.trim() || undefined;
   if (typeof jobTitle === "string") user.jobTitle = jobTitle.trim() || undefined;
   if (avatarUrl !== undefined) { if (avatarUrl !== null && (!r2PublicUrl || !avatarUrl.startsWith(`${r2PublicUrl}/profiles/${user.id}/`))) return reply.code(400).send({ message: "A imagem de perfil deve ser enviada pelo armazenamento autorizado." }); user.avatarUrl = avatarUrl || undefined; }
+  await persistUser(user);
   return safeUser(user);
 });
 app.post("/api/me/avatar", async (request, reply) => {
@@ -256,11 +262,12 @@ app.post("/api/me/avatar", async (request, reply) => {
   try { await r2Client.send(new PutObjectCommand({ Bucket: r2Bucket, Key: key, Body: buffer, ContentType: file.mimetype, CacheControl: "public, max-age=31536000, immutable" })); }
   catch (error) { request.log.error(error, "Falha no envio da foto ao R2"); return reply.code(502).send({ message: "Não foi possível enviar a imagem ao armazenamento." }); }
   user.avatarUrl = `${r2PublicUrl}/${key}`;
+  await persistUser(user);
   return safeUser(user);
 });
 
 app.get("/api/users", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user || user.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); return [...users.values()].map(safeUser); });
-app.post<{ Body: { name: string; email: string; role: UserRole; initialPassword: string } }>("/api/users", async (request, reply) => { const admin = sessionUser(request.headers.authorization); if (!admin || admin.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); if (request.body.initialPassword.length < 8) return reply.code(400).send({ message: "A senha inicial deve ter ao menos 8 caracteres." }); if ([...users.values()].some((item) => item.email === request.body.email.trim().toLowerCase())) return reply.code(409).send({ message: "Este e-mail já está cadastrado." }); const user: User = { id: `user-${crypto.randomUUID()}`, name: request.body.name.trim(), email: request.body.email.trim().toLowerCase(), role: request.body.role, passwordHash: hashPassword(request.body.initialPassword), mustChangePassword: true, createdAt: new Date().toISOString() }; users.set(user.id, user); return reply.code(201).send(safeUser(user)); });
+app.post<{ Body: { name: string; email: string; role: UserRole; initialPassword: string } }>("/api/users", async (request, reply) => { const admin = sessionUser(request.headers.authorization); if (!admin || admin.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); if (request.body.initialPassword.length < 8) return reply.code(400).send({ message: "A senha inicial deve ter ao menos 8 caracteres." }); if ([...users.values()].some((item) => item.email === request.body.email.trim().toLowerCase())) return reply.code(409).send({ message: "Este e-mail já está cadastrado." }); const user: User = { id: `user-${crypto.randomUUID()}`, name: request.body.name.trim(), email: request.body.email.trim().toLowerCase(), role: request.body.role, passwordHash: hashPassword(request.body.initialPassword), mustChangePassword: true, createdAt: new Date().toISOString() }; users.set(user.id, user); await persistUser(user); return reply.code(201).send(safeUser(user)); });
 
 app.get("/api/port-facilities", async (request, reply) => {
   try {
@@ -332,4 +339,5 @@ app.patch<{ Params: { id: string }; Body: Partial<Pick<ImportOperation, "exchang
   return { ...operation, summary: calculateImport(operation) };
 });
 
+await initializeUserStore();
 await app.listen({ port: Number(process.env.PORT || 3171), host: "0.0.0.0" });
