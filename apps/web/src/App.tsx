@@ -9,6 +9,7 @@ import {
   type Customer, type CustomsChannel, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus
 } from "@exporta/domain";
 import { DialogClose, DialogContent, DialogRoot, DialogTitle } from "./components/ui/dialog";
+import brandMark from "./assets/exporta-brasil-mark.svg";
 
 type View = "dashboard" | "imports" | "ports" | "pending" | "customers" | "reports";
 
@@ -139,7 +140,7 @@ export function App() {
   const closeOperationDetail = () => { window.history.pushState({}, "", "/operacoes"); setDetailId(null); };
   return <div className="app-shell">
     <aside className={`sidebar ${sidebarOpen ? "sidebar--open" : ""}`} aria-label="Navegação principal">
-      <div className="brand"><span className="brand-mark">EB</span><span><strong>Exporta</strong><small>Brasil</small></span><button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu"><X size={20} /></button></div>
+      <div className="brand"><img className="brand-mark" src={brandMark} alt="Exporta Brasil" /><span><strong>Exporta</strong><small>Brasil</small></span><button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu"><X size={20} /></button></div>
       <nav>{navigation.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-item ${view === id ? "is-active" : ""}`} onClick={() => changeView(id)}><Icon size={19} /><span>{label}</span>{id === "pending" && <b className="nav-count">3</b>}</button>)}</nav>
       <div className="sidebar-footer"><button className="nav-item"><Settings size={19} /><span>Configurações</span></button><div className="user-card"><span className="avatar">LA</span><span><strong>Lucas Alves</strong><small>Administrador</small></span></div></div>
     </aside>

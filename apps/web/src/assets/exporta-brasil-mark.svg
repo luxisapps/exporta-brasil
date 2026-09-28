@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>Exporta Brasil</title>
+  <path fill="#EAF2FF" d="M10 10a8 8 0 0 1 8-8h28v12H20a2 2 0 0 0-2 2v8h22v12H18a8 8 0 0 1-8-8V10Z"/>
+  <path fill="#EAF2FF" d="M37 29h10a9 9 0 1 1 0 18H28V35h19a3 3 0 1 0 0-6H37v-0Z"/>
+  <path fill="#60A5FA" d="M10 50V38h26c5 0 9-2 12-6l4-5v-7l12 12-12 12v-7l-4 5c-3 4-7 8-12 8H10Z"/>
+</svg>
