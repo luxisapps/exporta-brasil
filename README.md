@@ -23,6 +23,12 @@ O Railway possui um serviço de API e um PostgreSQL isolado. `DATABASE_URL` é r
 
 Neste estágio, o cliente guarda os dados de demonstração no navegador e a API usa memória. A próxima etapa troca essas duas persistências temporárias por PostgreSQL com Drizzle, sem mudar os contratos do domínio.
 
+## Dados operacionais oficiais
+
+- A barra superior consulta a PTAX de compra e venda publicada pelo Banco Central e atualiza a cada 15 minutos.
+- As notícias exibidas vêm do feed publicado pelo Siscomex, com prioridade para Importação.
+- O cadastro de clientes valida CNPJ numérico e alfanumérico. Para preencher os dados cadastrais, configure as variáveis de `apps/api/.env.example` com o serviço oficial de consulta CNPJ contratado junto à Receita Federal. A chave fica somente na API.
+
 ## Documentação de base
 
 - [Visão do produto](docs/01-visao-do-produto.md)

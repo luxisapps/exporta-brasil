@@ -23,6 +23,16 @@ const sessionUser = (authorization?: string) => { const token = authorization?.r
 const antaqFacilitiesUrl = "https://geo.infrasa.gov.br/server/rest/services/Hosted/Instala%C3%A7%C3%B5es_portu%C3%A1rias/FeatureServer/0/query";
 const portCatalogCacheTtlMs = 24 * 60 * 60 * 1000;
 let portCatalogCache: { facilities: PortFacility[]; syncedAt: string; expiresAt: number } | null = null;
+const marketContextCacheTtlMs = 15 * 60 * 1000;
+let marketContextCache: { data: MarketContext; expiresAt: number } | null = null;
+const receitaCnpjApiUrl = process.env.RFB_CNPJ_API_URL?.replace(/\/$/, "");
+const receitaCnpjApiToken = process.env.RFB_CNPJ_API_TOKEN;
+
+type MarketContext = {
+  dollar: { buy: number; sell: number; quotedAt: string; source: "BCB PTAX" };
+  news: Array<{ title: string; url: string; publishedAt?: string; source: "Siscomex" }>;
+  updatedAt: string;
+};
 
 type AntaqFeature = {
   attributes: {
@@ -54,6 +64,73 @@ async function getPortCatalog() {
   const syncedAt = new Date().toISOString();
   portCatalogCache = { facilities, syncedAt, expiresAt: Date.now() + portCatalogCacheTtlMs };
   return portCatalogCache;
+}
+
+const cnpjRaw = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14);
+const cnpjDigit = (value: string) => {
+  const weights = value.length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const remainder = [...value].reduce((sum, character, index) => sum + (character.charCodeAt(0) - 48) * weights[index], 0) % 11;
+  return remainder < 2 ? 0 : 11 - remainder;
+};
+const isValidCnpj = (value: string) => {
+  const raw = cnpjRaw(value);
+  if (raw.length !== 14 || (/^\d+$/.test(raw) && /^(\d)\1+$/.test(raw))) return false;
+  const base = raw.slice(0, 12);
+  const first = cnpjDigit(base);
+  return Number(raw[12]) === first && Number(raw[13]) === cnpjDigit(`${base}${first}`);
+};
+const textValue = (...values: unknown[]) => values.find((value) => typeof value === "string" && value.trim()) as string | undefined;
+const objectValue = (value: unknown) => value && typeof value === "object" ? value as Record<string, unknown> : {};
+
+function companyFromReceita(payload: Record<string, unknown>) {
+  const establishment = objectValue(payload.estabelecimento);
+  const company = objectValue(payload.empresa);
+  const phone = [textValue(establishment.ddd1, payload.ddd1), textValue(establishment.telefone1, payload.telefone1)].filter(Boolean).join(" ");
+  const street = [textValue(establishment.tipo_logradouro, payload.tipo_logradouro), textValue(establishment.logradouro, payload.logradouro)].filter(Boolean).join(" ");
+  return {
+    legalName: textValue(company.razao_social, payload.razao_social, payload.nome_empresarial, payload.nome),
+    tradeName: textValue(establishment.nome_fantasia, payload.nome_fantasia),
+    email: textValue(establishment.email, payload.email), phone: phone || undefined,
+    postalCode: textValue(establishment.cep, payload.cep), street: street || undefined,
+    number: textValue(establishment.numero, payload.numero), complement: textValue(establishment.complemento, payload.complemento),
+    district: textValue(establishment.bairro, payload.bairro),
+    city: textValue(establishment.municipio, payload.municipio), state: textValue(establishment.uf, payload.uf),
+    registrationStatus: textValue(establishment.situacao_cadastral, payload.situacao_cadastral)
+  };
+}
+
+async function getPtaxDollar() {
+  for (let daysAgo = 0; daysAgo < 10; daysAgo += 1) {
+    const date = new Date(); date.setUTCDate(date.getUTCDate() - daysAgo);
+    const value = `${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}-${date.getUTCFullYear()}`;
+    const params = new URLSearchParams({ "@moeda": "'USD'", "@dataCotacao": `'${value}'`, "$top": "1", "$format": "json" });
+    const response = await fetch(`https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?${params}`);
+    if (!response.ok) continue;
+    const payload = await response.json() as { value?: Array<{ cotacaoCompra: number; cotacaoVenda: number; dataHoraCotacao: string }> };
+    const quote = payload.value?.at(-1);
+    if (quote) return { buy: quote.cotacaoCompra, sell: quote.cotacaoVenda, quotedAt: quote.dataHoraCotacao, source: "BCB PTAX" as const };
+  }
+  throw new Error("A PTAX não retornou uma cotação recente.");
+}
+
+const decodeXml = (value: string) => value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#8211;/g, "–").trim();
+async function getSiscomexNews() {
+  const response = await fetch("https://www.gov.br/siscomex/pt-br/noticias/rss.xml", { headers: { accept: "application/rss+xml, application/xml" } });
+  if (!response.ok) throw new Error(`Siscomex respondeu ${response.status}`);
+  const xml = await response.text();
+  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((match) => {
+    const item = match[1];
+    const field = (name: string) => decodeXml(item.match(new RegExp(`<${name}>([\\s\\S]*?)<\\/${name}>`))?.[1] ?? "");
+    return { title: field("title"), url: field("link") || field("guid"), publishedAt: field("pubDate") || undefined, source: "Siscomex" as const };
+  }).filter((item) => item.title && item.url);
+  return [...items.filter((item) => /importa|aduana|duimp/i.test(item.title)), ...items.filter((item) => !/importa|aduana|duimp/i.test(item.title))].slice(0, 3);
+}
+async function getMarketContext() {
+  if (marketContextCache && marketContextCache.expiresAt > Date.now()) return marketContextCache.data;
+  const [dollar, news] = await Promise.all([getPtaxDollar(), getSiscomexNews().catch(() => [])]);
+  const data: MarketContext = { dollar, news, updatedAt: new Date().toISOString() };
+  marketContextCache = { data, expiresAt: Date.now() + marketContextCacheTtlMs };
+  return data;
 }
 
 const customerSeed: Customer[] = [
@@ -88,6 +165,36 @@ const seed: ImportOperation = {
 imports.set(seed.id, seed);
 
 app.get("/health", async () => ({ status: "ok", service: "exporta-brasil-api" }));
+
+app.get("/api/market-context", async (request, reply) => {
+  try {
+    return await getMarketContext();
+  } catch (error) {
+    request.log.error(error, "Não foi possível consultar o contexto operacional");
+    return reply.code(503).send({ message: "A cotação oficial está indisponível no momento." });
+  }
+});
+
+app.get<{ Params: { cnpj: string } }>("/api/companies/:cnpj", async (request, reply) => {
+  const cnpj = cnpjRaw(request.params.cnpj);
+  if (!isValidCnpj(cnpj)) return reply.code(400).send({ message: "CNPJ inválido." });
+  if (!receitaCnpjApiUrl) return reply.code(503).send({ message: "A consulta oficial da Receita Federal ainda não foi configurada neste ambiente." });
+  try {
+    const response = await fetch(`${receitaCnpjApiUrl}/${encodeURIComponent(cnpj)}`, {
+      headers: { accept: "application/json", ...(receitaCnpjApiToken ? { authorization: `Bearer ${receitaCnpjApiToken}` } : {}) }
+    });
+    if (!response.ok) {
+      request.log.warn({ statusCode: response.status }, "Consulta oficial de CNPJ falhou");
+      return reply.code(response.status === 404 ? 404 : 502).send({ message: response.status === 404 ? "CNPJ não encontrado na Receita Federal." : "A consulta da Receita Federal está indisponível no momento." });
+    }
+    const company = companyFromReceita(await response.json() as Record<string, unknown>);
+    if (!company.legalName) return reply.code(502).send({ message: "A Receita Federal não retornou uma razão social para este CNPJ." });
+    return company;
+  } catch (error) {
+    request.log.error(error, "Falha na consulta oficial de CNPJ");
+    return reply.code(503).send({ message: "A consulta da Receita Federal está indisponível no momento." });
+  }
+});
 
 app.post<{ Body: { email: string; password: string } }>("/api/auth/login", async (request, reply) => {
   const user = [...users.values()].find((item) => item.email === request.body.email.trim().toLowerCase());

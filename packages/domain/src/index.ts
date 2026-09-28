@@ -24,6 +24,14 @@ export type Customer = {
   contactName: string;
   email: string;
   phone: string;
+  postalCode?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  district?: string;
+  city?: string;
+  state?: string;
+  registrationStatus?: string;
   status: "active" | "inactive";
   createdAt: string;
 };
