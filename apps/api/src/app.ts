@@ -3,13 +3,13 @@ import Fastify from "fastify";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { calculateImport, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
 await app.register(cors, { origin: true });
 
 const imports = new Map<string, ImportOperation>();
 const customers = new Map<string, Customer>();
 type UserRole = "admin" | "operator";
-type User = { id: string; name: string; email: string; role: UserRole; passwordHash: string; mustChangePassword: boolean; createdAt: string };
+type User = { id: string; name: string; email: string; role: UserRole; passwordHash: string; mustChangePassword: boolean; createdAt: string; phone?: string; jobTitle?: string; avatarDataUrl?: string };
 type Session = { userId: string; expiresAt: number };
 const users = new Map<string, User>();
 const sessions = new Map<string, Session>();
@@ -221,6 +221,16 @@ app.post<{ Body: { password: string } }>("/api/auth/change-password", async (req
   const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." });
   if (request.body.password.length < 8) return reply.code(400).send({ message: "A senha deve ter ao menos 8 caracteres." });
   user.passwordHash = hashPassword(request.body.password); user.mustChangePassword = false; return { user: safeUser(user) };
+});
+app.get("/api/me", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." }); return safeUser(user); });
+app.patch<{ Body: { name?: string; phone?: string; jobTitle?: string; avatarDataUrl?: string | null } }>("/api/me", async (request, reply) => {
+  const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." });
+  const { name, phone, jobTitle, avatarDataUrl } = request.body;
+  if (typeof name === "string") { const value = name.trim(); if (!value) return reply.code(400).send({ message: "Informe seu nome." }); user.name = value; }
+  if (typeof phone === "string") user.phone = phone.trim() || undefined;
+  if (typeof jobTitle === "string") user.jobTitle = jobTitle.trim() || undefined;
+  if (avatarDataUrl !== undefined) { if (avatarDataUrl !== null && (!avatarDataUrl.startsWith("data:image/") || avatarDataUrl.length > 1_400_000)) return reply.code(400).send({ message: "Envie uma imagem válida de até 1 MB." }); user.avatarDataUrl = avatarDataUrl || undefined; }
+  return safeUser(user);
 });
 app.get("/api/users", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user || user.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); return [...users.values()].map(safeUser); });
 app.post<{ Body: { name: string; email: string; role: UserRole; initialPassword: string } }>("/api/users", async (request, reply) => { const admin = sessionUser(request.headers.authorization); if (!admin || admin.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); if (request.body.initialPassword.length < 8) return reply.code(400).send({ message: "A senha inicial deve ter ao menos 8 caracteres." }); if ([...users.values()].some((item) => item.email === request.body.email.trim().toLowerCase())) return reply.code(409).send({ message: "Este e-mail já está cadastrado." }); const user: User = { id: `user-${crypto.randomUUID()}`, name: request.body.name.trim(), email: request.body.email.trim().toLowerCase(), role: request.body.role, passwordHash: hashPassword(request.body.initialPassword), mustChangePassword: true, createdAt: new Date().toISOString() }; users.set(user.id, user); return reply.code(201).send(safeUser(user)); });
