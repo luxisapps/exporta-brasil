@@ -77,3 +77,4 @@ h1, h2, p { margin: 0; } small { display: block; }
 @keyframes skeleton-shimmer { from { background-position:100% 0; } to { background-position:-100% 0; } }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation:none; background:rgba(100,116,139,.25); } }
 @media (max-width: 767px) { .skeleton--headline { display:none; }.skeleton--quote { width:104px; height:24px; } }
+.export-error { margin:0; color:#fecaca; font-size:12px; line-height:1.4; }
