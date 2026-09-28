@@ -140,7 +140,7 @@ function BackofficeApp({ session, onSessionUpdate, onLogout }: { session: { toke
       setPortCatalogError(error instanceof Error ? error.message : "Não foi possível carregar o catálogo."); setPortCatalogState("error");
     });
   };
-  useEffect(() => { let active = true; fetch(`${apiUrl}/api/users`, { headers: { authorization: `Bearer ${session.token}` } }).then((response) => response.ok ? response.json() : []).then((data: SessionUser[]) => { if (active && Array.isArray(data)) setTeamMembers(data); }).catch(() => undefined).finally(() => { if (active) setTeamMembersLoading(false); }); return () => { active = false; }; }, [session.token]);
+  useEffect(() => { let active = true; fetch(`${apiUrl}/api/users`, { headers: { authorization: `Bearer ${session.token}` } }).then((response) => response.ok ? response.json() : []).then((data: SessionUser[]) => { if (active && Array.isArray(data) && data.length) setTeamMembers(data); }).catch(() => undefined).finally(() => { if (active) setTeamMembersLoading(false); }); return () => { active = false; }; }, [session.token]);
   useEffect(() => { if (view === "ports" && portCatalogState === "idle") loadPortCatalog(); }, [view, portCatalogState]);
   useEffect(() => { if (showNewImport && portCatalogState === "idle") loadPortCatalog(); }, [showNewImport, portCatalogState]);
   const selected = operations.find((operation) => operation.id === (detailId ?? selectedId)) ?? operations.find((operation) => operation.id === selectedId) ?? operations[0];
