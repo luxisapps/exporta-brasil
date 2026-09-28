@@ -5,8 +5,8 @@ import {
   Pencil, Search, Settings, ShipWheel, SlidersHorizontal, Users, X
 } from "lucide-react";
 import {
-  calculateImport, importStatusMeta, portStatusMeta,
-  type Customer, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus
+  calculateImport, customsChannelMeta, importStatusMeta, portStatusMeta,
+  type Customer, type CustomsChannel, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus
 } from "@exporta/domain";
 import { DialogClose, DialogContent, DialogRoot, DialogTitle } from "./components/ui/dialog";
 
@@ -20,7 +20,7 @@ const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maxim
 
 const initialOperations: ImportOperation[] = [{
   id: "imp-001", reference: "EB-2026-001", customerId: "customer-001", customer: "Aurora Comércio", supplier: "Ningbo Horizon Co.",
-  port: "Porto de Santos", container: "TGHU 812903-4", status: "customs", portStatus: "customs_clearance",
+  port: "Porto de Santos", container: "TGHU 812903-4", status: "customs", portStatus: "customs_clearance", customsChannel: "yellow",
   eta: "2026-10-03", createdAt: "2026-09-12T10:00:00.000Z", updatedAt: "2026-09-27T14:30:00.000Z", exchangeRate: 5.42,
   freightBrl: 18400, insuranceBrl: 1850, portExpensesBrl: 12680,
   items: [
@@ -29,7 +29,7 @@ const initialOperations: ImportOperation[] = [{
   ]
 }, {
   id: "imp-002", reference: "EB-2026-002", customerId: "customer-002", customer: "Casa Norte", supplier: "Qingdao Bright Ltd.",
-  port: "Porto de Itajaí", container: "TRHU 229140-6", status: "in_transit", portStatus: "in_transit",
+  port: "Porto de Itajaí", container: "TRHU 229140-6", status: "in_transit", portStatus: "in_transit", customsChannel: "pending",
   eta: "2026-10-16", createdAt: "2026-09-18T10:00:00.000Z", updatedAt: "2026-09-26T11:00:00.000Z", exchangeRate: 5.38,
   freightBrl: 12600, insuranceBrl: 980, portExpensesBrl: 8200,
   items: [{ id: "item-003", name: "Organizador doméstico", ncm: "39249000", quantity: 1200, unitPriceUsd: 4.85, grossWeightKg: 0.45, iiRate: 18, ipiRate: 5 }]
@@ -57,7 +57,7 @@ function operationIdFromPath() { return window.location.pathname.match(/^\/opera
 export function App() {
   const [view, setView] = useState<View>(() => operationIdFromPath() ? "imports" : "dashboard");
   const [operations, setOperations] = useState<ImportOperation[]>(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || "") as ImportOperation[]; } catch { return initialOperations; }
+    try { return (JSON.parse(localStorage.getItem(storageKey) || "") as Array<Partial<ImportOperation>>).map((operation) => ({ ...operation, customsChannel: operation.customsChannel === "gray" && ["in_transit", "customs_clearance"].includes(operation.portStatus ?? "") ? "pending" : operation.customsChannel ?? "pending" } as ImportOperation)); } catch { return initialOperations; }
   });
   const [customers, setCustomers] = useState<Customer[]>(() => {
     try { return JSON.parse(localStorage.getItem(customersStorageKey) || "") as Customer[]; } catch { return initialCustomers; }
@@ -104,7 +104,7 @@ export function App() {
     const operation: ImportOperation = {
       id: uid("imp"), reference: String(form.get("reference") || `EB-${new Date().getFullYear()}-${String(operations.length + 1).padStart(3, "0")}`),
       customerId, customer: customer.tradeName || customer.legalName, supplier: String(form.get("supplier")), port: String(form.get("port")),
-      container: String(form.get("container")), eta: String(form.get("eta")), status: "draft", portStatus: "awaiting_departure",
+      container: String(form.get("container")), eta: String(form.get("eta")), status: "draft", portStatus: "awaiting_departure", customsChannel: "pending",
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: []
     };
     setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); setView("imports");
@@ -164,6 +164,7 @@ function Dashboard({ operations, totalInProgress, totalValue, onOpen }: { operat
   const atPort = operations.filter((operation) => ["at_port", "customs"].includes(operation.status)).length;
   return <section className="page"><div className="page-heading"><div><p className="eyebrow">CENTRO DE CONTROLE</p><h1>Operações sob controle.</h1><p className="muted">Acompanhe custos, cargas e decisões que pedem atenção.</p></div><button className="button button--primary" onClick={onOpen}><ShipWheel size={18} /> Ver operações</button></div>
     <div className="metric-grid"><Metric icon={<Container />} label="Importações ativas" value={String(totalInProgress)} detail="processos em andamento" tone="blue" /><Metric icon={<MapPinned />} label="Cargas em porto" value={String(atPort)} detail="com atualização necessária" tone="amber" /><Metric icon={<ChartNoAxesCombined />} label="Custo projetado" value={money.format(totalValue)} detail="nas operações abertas" tone="green" /></div>
+    <CustomsSignalOverview operations={operations} />
     <div className="dashboard-grid"><section className="panel"><div className="panel-header"><div><h2>Operações recentes</h2><p>Os processos que exigem acompanhamento.</p></div><button className="text-button" onClick={onOpen}>Ver todas</button></div><div className="activity-list">{operations.map((operation) => <button className="activity-row" key={operation.id} onClick={onOpen}><span className="activity-icon"><ShipWheel size={18} /></span><span><strong>{operation.reference}</strong><small>{operation.customer} · {operation.port}</small></span><StatusBadge status={operation.status} /><ChevronRight size={18} /></button>)}</div></section>
       <section className="panel attention-card"><div className="panel-header"><div><h2>Próxima decisão</h2><p>Uma pendência prioritária.</p></div><span className="urgency">Hoje</span></div><div className="attention-body"><span className="attention-icon"><ClipboardList size={22} /></span><div><strong>Validar documentação de desembaraço</strong><p>EB-2026-001 está em análise aduaneira no Porto de Santos.</p><button className="text-button" onClick={onOpen}>Abrir operação <ChevronRight size={15} /></button></div></div></section></div>
   </section>;
@@ -190,8 +191,12 @@ function OperationDetailPage({ selected, onBack, onAddItem, onUpdate }: { select
 }
 
 function OperationHeader({ operation, onUpdate }: { operation: ImportOperation; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) {
-  return <header className="operation-header panel"><div><p className="eyebrow">{operation.reference}</p><h2>{operation.customer}</h2><p className="muted">{operation.supplier} · {operation.container}</p></div><div className="operation-status"><label>Status da operação<select value={operation.status} onChange={(event) => onUpdate(operation.id, { status: event.target.value as ImportStatus })}>{Object.entries(importStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label><StatusBadge status={operation.status} /></div><div className="port-progress"><div><span className="port-pin"><MapPinned size={18} /></span><span><strong>{operation.port}</strong><small>ETA {formatDate(operation.eta)}</small></span></div><label>Status portuário<select value={operation.portStatus} onChange={(event) => onUpdate(operation.id, { portStatus: event.target.value as PortStatus })}>{Object.entries(portStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label></div></header>;
+  return <header className="operation-header panel"><div><p className="eyebrow">{operation.reference}</p><h2>{operation.customer}</h2><p className="muted">{operation.supplier} · {operation.container}</p></div><div className="operation-status"><label>Status da operação<select value={operation.status} onChange={(event) => onUpdate(operation.id, { status: event.target.value as ImportStatus })}>{Object.entries(importStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label><StatusBadge status={operation.status} /></div><div className="port-progress"><div><span className="port-pin"><MapPinned size={18} /></span><span><strong>{operation.port}</strong><small>ETA {formatDate(operation.eta)}</small></span></div><label>Status portuário<select value={operation.portStatus} onChange={(event) => onUpdate(operation.id, { portStatus: event.target.value as PortStatus })}>{Object.entries(portStatusMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select></label></div><div className="customs-channel-row"><CustomsLight channel={operation.customsChannel} /><div><strong>Canal aduaneiro</strong><p>{customsChannelMeta[operation.customsChannel].detail}</p></div><label><span className="sr-only">Canal aduaneiro</span><select value={operation.customsChannel} onChange={(event) => onUpdate(operation.id, { customsChannel: event.target.value as CustomsSignal })}>{Object.entries(customsChannelMeta).map(([value, meta]) => <option value={value} key={value}>{meta.label}</option>)}</select><small>Atualização manual</small></label></div></header>;
 }
+
+function CustomsLight({ channel, compact = false, active = true }: { channel: CustomsSignal; compact?: boolean; active?: boolean }) { const meta = customsChannelMeta[channel]; return <div className={`customs-light${compact ? " customs-light--compact" : ""}`} role="img" aria-label={active ? `${meta.label}: ${meta.detail}` : "Farol aduaneiro"}><span className="customs-light__lens customs-light__lens--green" data-active={active && channel === "green"} /><span className="customs-light__lens customs-light__lens--yellow" data-active={active && channel === "yellow"} /><span className="customs-light__lens customs-light__lens--red" data-active={active && channel === "red"} /><span className="customs-light__lens customs-light__lens--gray" data-active={active && (channel === "gray" || channel === "pending")} /></div>; }
+
+function CustomsSignalOverview({ operations }: { operations: ImportOperation[] }) { const channels: CustomsChannel[] = ["green", "yellow", "red", "gray"]; const pending = operations.filter((operation) => operation.customsChannel === "pending").length; return <section className="panel customs-overview"><div className="customs-overview__intro"><CustomsLight channel="pending" active={false} /><div><h2>Farol aduaneiro</h2><p>Operações por canal de conferência. A cor é sempre acompanhada pelo nome e pela etapa aplicável.</p>{pending > 0 && <small>{pending} aguardando parametrização</small>}</div></div><div className="customs-overview__counts">{channels.map((channel) => { const meta = customsChannelMeta[channel]; const count = operations.filter((operation) => operation.customsChannel === channel).length; return <div className={`customs-count customs-count--${channel}`} key={channel}><span className="customs-count__dot" aria-hidden="true" /><span>{meta.label}</span><strong>{count}</strong><small>{meta.detail}</small></div>; })}</div></section>; }
 
 function PortsCatalogView({ facilities, state, error, onRetry }: { facilities: PortFacility[]; state: "idle" | "loading" | "ready" | "error"; error: string; onRetry: () => void }) {
   const [query, setQuery] = useState("");

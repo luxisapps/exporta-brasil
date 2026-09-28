@@ -1,6 +1,6 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
-import { calculateImport, type Customer, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
+import { calculateImport, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true });
 await app.register(cors, { origin: true });
@@ -60,6 +60,7 @@ const seed: ImportOperation = {
   container: "TGHU 812903-4",
   status: "customs",
   portStatus: "customs_clearance",
+  customsChannel: "yellow",
   eta: "2026-10-03",
   createdAt: "2026-09-12T10:00:00.000Z",
   updatedAt: now,
@@ -125,7 +126,7 @@ app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) =
 app.post<{ Body: Pick<ImportOperation, "reference" | "customer" | "customerId" | "supplier" | "port" | "container" | "eta"> }>("/api/imports", async (request, reply) => {
   const id = `imp-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
-  const operation: ImportOperation = { id, ...request.body, status: "draft", portStatus: "awaiting_departure", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
+  const operation: ImportOperation = { id, ...request.body, status: "draft", portStatus: "awaiting_departure", customsChannel: "pending", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
   imports.set(id, operation);
   return reply.code(201).send({ ...operation, summary: calculateImport(operation) });
 });
@@ -138,10 +139,10 @@ app.post<{ Params: { id: string }; Body: Omit<ImportItem, "id"> }>("/api/imports
   return { ...operation, summary: calculateImport(operation) };
 });
 
-app.patch<{ Params: { id: string }; Body: Partial<Pick<ImportOperation, "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "status" | "portStatus">> }>("/api/imports/:id", async (request, reply) => {
+app.patch<{ Params: { id: string }; Body: Partial<Pick<ImportOperation, "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "status" | "portStatus" | "customsChannel">> }>("/api/imports/:id", async (request, reply) => {
   const operation = imports.get(request.params.id);
   if (!operation) return reply.code(404).send({ message: "Importação não encontrada" });
-  Object.assign(operation, request.body as { status?: ImportStatus; portStatus?: PortStatus });
+  Object.assign(operation, request.body as { status?: ImportStatus; portStatus?: PortStatus; customsChannel?: CustomsSignal });
   operation.updatedAt = new Date().toISOString();
   return { ...operation, summary: calculateImport(operation) };
 });

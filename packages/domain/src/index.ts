@@ -2,6 +2,9 @@ export type ImportStatus = "draft" | "quotation" | "in_transit" | "at_port" | "c
 
 export type PortStatus = "awaiting_departure" | "in_transit" | "awaiting_berth" | "unloading" | "customs_clearance" | "released";
 
+export type CustomsChannel = "green" | "yellow" | "red" | "gray";
+export type CustomsSignal = CustomsChannel | "pending";
+
 export type ImportItem = {
   id: string;
   name: string;
@@ -47,6 +50,7 @@ export type ImportOperation = {
   container: string;
   status: ImportStatus;
   portStatus: PortStatus;
+  customsChannel: CustomsSignal;
   eta: string;
   createdAt: string;
   updatedAt: string;
@@ -74,6 +78,14 @@ export const portStatusMeta: Record<PortStatus, { label: string; detail: string 
   unloading: { label: "Em descarga", detail: "Contêiner em movimentação no terminal" },
   customs_clearance: { label: "Em desembaraço aduaneiro", detail: "Processo sob análise da alfândega" },
   released: { label: "Carga liberada", detail: "Disponível para retirada programada" }
+};
+
+export const customsChannelMeta: Record<CustomsSignal, { label: string; detail: string }> = {
+  pending: { label: "Aguardando parametrização", detail: "Canal ainda não informado" },
+  green: { label: "Canal verde", detail: "Desembaraço automático" },
+  yellow: { label: "Canal amarelo", detail: "Exame documental" },
+  red: { label: "Canal vermelho", detail: "Exame documental e físico" },
+  gray: { label: "Canal cinza", detail: "Apuração de indícios de fraude" }
 };
 
 const round = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
