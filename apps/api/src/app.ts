@@ -26,6 +26,7 @@ const seed: ImportOperation = {
   status: "customs",
   portStatus: "customs_clearance",
   eta: "2026-10-03",
+  createdAt: "2026-09-12T10:00:00.000Z",
   updatedAt: now,
   exchangeRate: 5.42,
   freightBrl: 18400,
@@ -55,7 +56,20 @@ app.patch<{ Params: { id: string }; Body: Partial<Omit<Customer, "id" | "created
   return customer;
 });
 
-app.get("/api/imports", async () => [...imports.values()].map((operation) => ({ ...operation, summary: calculateImport(operation) })));
+app.get<{ Querystring: { page?: string; pageSize?: string; status?: ImportStatus; sort?: "createdAtAsc" | "createdAtDesc" | "updatedAtDesc"; query?: string } }>("/api/imports", async (request) => {
+  const page = Math.max(1, Number(request.query.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Number(request.query.pageSize) || 20));
+  const sort = request.query.sort ?? "createdAtAsc";
+  const query = request.query.query?.toLocaleLowerCase("pt-BR").trim();
+  const filtered = [...imports.values()].filter((operation) => (!request.query.status || operation.status === request.query.status) && (!query || `${operation.reference} ${operation.customer} ${operation.supplier}`.toLocaleLowerCase("pt-BR").includes(query)));
+  const ordered = filtered.sort((a, b) => {
+    const createdDifference = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    if (sort === "createdAtDesc") return -createdDifference;
+    if (sort === "updatedAtDesc") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    return createdDifference;
+  });
+  return { data: ordered.slice((page - 1) * pageSize, page * pageSize).map((operation) => ({ ...operation, summary: calculateImport(operation) })), page, pageSize, total: ordered.length, totalPages: Math.max(1, Math.ceil(ordered.length / pageSize)) };
+});
 
 app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) => {
   const operation = imports.get(request.params.id);
@@ -65,7 +79,8 @@ app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) =
 
 app.post<{ Body: Pick<ImportOperation, "reference" | "customer" | "customerId" | "supplier" | "port" | "container" | "eta"> }>("/api/imports", async (request, reply) => {
   const id = `imp-${crypto.randomUUID()}`;
-  const operation: ImportOperation = { id, ...request.body, status: "draft", portStatus: "awaiting_departure", updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
+  const timestamp = new Date().toISOString();
+  const operation: ImportOperation = { id, ...request.body, status: "draft", portStatus: "awaiting_departure", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
   imports.set(id, operation);
   return reply.code(201).send({ ...operation, summary: calculateImport(operation) });
 });

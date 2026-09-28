@@ -36,6 +36,7 @@ export type ImportOperation = {
   status: ImportStatus;
   portStatus: PortStatus;
   eta: string;
+  createdAt: string;
   updatedAt: string;
   exchangeRate: number;
   freightBrl: number;

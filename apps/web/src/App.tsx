@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import {
-  Archive, Bell, Box, ChartNoAxesCombined, ChevronRight, CircleHelp, ClipboardList,
+  Archive, ArrowLeft, Bell, Box, ChartNoAxesCombined, ChevronLeft, ChevronRight, CircleHelp, ClipboardList,
   Container, FileBarChart, LayoutDashboard, MapPinned, Menu, PackagePlus, Plus,
-  Pencil, Search, Settings, ShipWheel, Users, X
+  Pencil, Search, Settings, ShipWheel, SlidersHorizontal, Users, X
 } from "lucide-react";
 import {
   calculateImport, importStatusMeta, portStatusMeta,
@@ -20,7 +20,7 @@ const decimal = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maxim
 const initialOperations: ImportOperation[] = [{
   id: "imp-001", reference: "EB-2026-001", customerId: "customer-001", customer: "Aurora Comércio", supplier: "Ningbo Horizon Co.",
   port: "Porto de Santos", container: "TGHU 812903-4", status: "customs", portStatus: "customs_clearance",
-  eta: "2026-10-03", updatedAt: "2026-09-27T14:30:00.000Z", exchangeRate: 5.42,
+  eta: "2026-10-03", createdAt: "2026-09-12T10:00:00.000Z", updatedAt: "2026-09-27T14:30:00.000Z", exchangeRate: 5.42,
   freightBrl: 18400, insuranceBrl: 1850, portExpensesBrl: 12680,
   items: [
     { id: "item-001", name: "Mala de viagem rígida", ncm: "42021220", quantity: 480, unitPriceUsd: 18.4, grossWeightKg: 3.2, iiRate: 18, ipiRate: 15 },
@@ -29,7 +29,7 @@ const initialOperations: ImportOperation[] = [{
 }, {
   id: "imp-002", reference: "EB-2026-002", customerId: "customer-002", customer: "Casa Norte", supplier: "Qingdao Bright Ltd.",
   port: "Porto de Itajaí", container: "TRHU 229140-6", status: "in_transit", portStatus: "in_transit",
-  eta: "2026-10-16", updatedAt: "2026-09-26T11:00:00.000Z", exchangeRate: 5.38,
+  eta: "2026-10-16", createdAt: "2026-09-18T10:00:00.000Z", updatedAt: "2026-09-26T11:00:00.000Z", exchangeRate: 5.38,
   freightBrl: 12600, insuranceBrl: 980, portExpensesBrl: 8200,
   items: [{ id: "item-003", name: "Organizador doméstico", ncm: "39249000", quantity: 1200, unitPriceUsd: 4.85, grossWeightKg: 0.45, iiRate: 18, ipiRate: 5 }]
 }];
@@ -51,9 +51,10 @@ const navigation: { id: View; label: string; icon: typeof LayoutDashboard }[] = 
 function uid(prefix: string) { return `${prefix}-${crypto.randomUUID()}`; }
 function inputNumber(value: FormDataEntryValue | null) { return Number(String(value ?? "0").replace(",", ".")) || 0; }
 function formatDate(value: string) { return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(`${value}T12:00:00`)); }
+function operationIdFromPath() { return window.location.pathname.match(/^\/operacoes\/([^/]+)$/)?.[1] ?? null; }
 
 export function App() {
-  const [view, setView] = useState<View>("dashboard");
+  const [view, setView] = useState<View>(() => operationIdFromPath() ? "imports" : "dashboard");
   const [operations, setOperations] = useState<ImportOperation[]>(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || "") as ImportOperation[]; } catch { return initialOperations; }
   });
@@ -61,6 +62,7 @@ export function App() {
     try { return JSON.parse(localStorage.getItem(customersStorageKey) || "") as Customer[]; } catch { return initialCustomers; }
   });
   const [selectedId, setSelectedId] = useState("imp-001");
+  const [detailId, setDetailId] = useState<string | null>(operationIdFromPath);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNewImport, setShowNewImport] = useState(false);
   const [showNewItem, setShowNewItem] = useState(false);
@@ -70,6 +72,7 @@ export function App() {
 
   useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(operations)); }, [operations]);
   useEffect(() => { localStorage.setItem(customersStorageKey, JSON.stringify(customers)); }, [customers]);
+  useEffect(() => { const syncRoute = () => setDetailId(operationIdFromPath()); window.addEventListener("popstate", syncRoute); return () => window.removeEventListener("popstate", syncRoute); }, []);
   const selected = operations.find((operation) => operation.id === selectedId) ?? operations[0];
   const totalInProgress = operations.filter((item) => !["completed", "cleared"].includes(item.status)).length;
   const totalValue = useMemo(() => operations.reduce((sum, operation) => sum + calculateImport(operation).totalCost, 0), [operations]);
@@ -88,7 +91,7 @@ export function App() {
       id: uid("imp"), reference: String(form.get("reference") || `EB-${new Date().getFullYear()}-${String(operations.length + 1).padStart(3, "0")}`),
       customerId, customer: customer.tradeName || customer.legalName, supplier: String(form.get("supplier")), port: String(form.get("port")),
       container: String(form.get("container")), eta: String(form.get("eta")), status: "draft", portStatus: "awaiting_departure",
-      updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: []
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: []
     };
     setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); setView("imports");
   };
@@ -118,6 +121,8 @@ export function App() {
   };
 
   const changeView = (next: View) => { setView(next); setSidebarOpen(false); };
+  const openOperation = (id: string) => { window.history.pushState({}, "", `/operacoes/${id}`); setSelectedId(id); setDetailId(id); setView("imports"); };
+  const closeOperationDetail = () => { window.history.pushState({}, "", "/operacoes"); setDetailId(null); };
   return <div className="app-shell">
     <aside className={`sidebar ${sidebarOpen ? "sidebar--open" : ""}`} aria-label="Navegação principal">
       <div className="brand"><span className="brand-mark">EB</span><span><strong>Exporta</strong><small>Brasil</small></span><button className="icon-button mobile-only" onClick={() => setSidebarOpen(false)} aria-label="Fechar menu"><X size={20} /></button></div>
@@ -128,7 +133,8 @@ export function App() {
     <main className="main-content">
       <header className="topbar"><button className="icon-button mobile-only" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu"><Menu size={21} /></button><div className="breadcrumb"><span>Operações</span><ChevronRight size={15} /><strong>{view === "dashboard" ? "Visão geral" : navigation.find((item) => item.id === view)?.label}</strong></div><div className="top-actions"><button className="icon-button" aria-label="Buscar"><Search size={19} /></button><button className="icon-button notification" aria-label="Notificações"><Bell size={19} /><i /></button><button className="icon-button" aria-label="Ajuda"><CircleHelp size={19} /></button></div></header>
       {view === "dashboard" && <Dashboard operations={operations} totalInProgress={totalInProgress} totalValue={totalValue} onOpen={() => setView("imports")} />}
-      {view === "imports" && selected && <OperationsView operations={operations} selected={selected} onSelect={setSelectedId} onNew={() => setShowNewImport(true)} onAddItem={() => setShowNewItem(true)} onUpdate={updateOperation} />}
+       {view === "imports" && !detailId && <OperationsListView operations={operations} onNew={() => setShowNewImport(true)} onOpen={openOperation} />}
+       {view === "imports" && detailId && selected && <OperationDetailPage selected={selected} onBack={closeOperationDetail} onAddItem={() => setShowNewItem(true)} onUpdate={updateOperation} />}
        {view === "ports" && selected && <PortsView operations={operations} selected={selected} onSelect={setSelectedId} onUpdate={updateOperation} />}
        {view === "customers" && <CustomersView customers={customers} operations={operations} onNew={() => { setEditingCustomer(null); setShowNewCustomer(true); }} onEdit={(customer) => { setEditingCustomer(customer); setShowNewCustomer(true); }} />}
        {["pending", "reports"].includes(view) && <Placeholder view={view} onNavigate={() => setView("imports")} />}
@@ -149,13 +155,24 @@ function Dashboard({ operations, totalInProgress, totalValue, onOpen }: { operat
   </section>;
 }
 
-function OperationsView({ operations, selected, onSelect, onNew, onAddItem, onUpdate }: { operations: ImportOperation[]; selected: ImportOperation; onSelect: (id: string) => void; onNew: () => void; onAddItem: () => void; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) {
+function OperationsListView({ operations, onNew, onOpen }: { operations: ImportOperation[]; onNew: () => void; onOpen: (id: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState<ImportStatus | "all">("all");
+  const [sort, setSort] = useState<"oldest" | "newest" | "updated">("oldest");
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
+  const filtered = operations.filter((operation) => (!query || `${operation.reference} ${operation.customer} ${operation.supplier} ${operation.port}`.toLocaleLowerCase("pt-BR").includes(query.toLocaleLowerCase("pt-BR"))) && (status === "all" || operation.status === status));
+  const ordered = [...filtered].sort((a, b) => { const created = new Date(a.createdAt ?? a.updatedAt).getTime() - new Date(b.createdAt ?? b.updatedAt).getTime(); if (sort === "newest") return -created; if (sort === "updated") return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(); return created; });
+  const totalPages = Math.max(1, Math.ceil(ordered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visible = ordered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const resetPage = () => setPage(1);
+  return <section className="page operations-page"><div className="page-heading"><div><p className="eyebrow">GESTÃO DE IMPORTAÇÕES</p><h1>Operações</h1><p className="muted">Encontre uma operação, filtre a fila e abra um processo para trabalhar nos detalhes.</p></div><button className="button button--primary" onClick={onNew}><Plus size={18} /> Nova importação</button></div><section className="panel operations-list-panel"><div className="operations-toolbar"><label className="search-field"><Search size={17} /><input value={query} onChange={(event) => { setQuery(event.target.value); resetPage(); }} placeholder="Buscar por referência, cliente ou porto" aria-label="Buscar operações" /></label><div className="operation-filters"><label><SlidersHorizontal size={15} /><span className="sr-only">Status</span><select value={status} onChange={(event) => { setStatus(event.target.value as ImportStatus | "all"); resetPage(); }}><option value="all">Todos os status</option>{Object.entries(importStatusMeta).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}</select></label><label><span className="sr-only">Ordenação</span><select value={sort} onChange={(event) => { setSort(event.target.value as "oldest" | "newest" | "updated"); resetPage(); }}><option value="oldest">Mais antigas primeiro</option><option value="newest">Mais recentes primeiro</option><option value="updated">Atualizadas recentemente</option></select></label></div></div><div className="table-scroll"><table className="operations-table"><thead><tr><th>Referência</th><th>Cliente</th><th>Destino</th><th>ETA</th><th>Status</th><th>Criada em</th><th><span className="sr-only">Ações</span></th></tr></thead><tbody>{visible.length === 0 ? <tr><td className="empty-cell" colSpan={7}>Nenhuma operação corresponde aos filtros.</td></tr> : visible.map((operation) => <tr key={operation.id}><td><strong>{operation.reference}</strong><small>{operation.supplier}</small></td><td>{operation.customer}</td><td><strong>{operation.port}</strong><small>{operation.container}</small></td><td>{formatDate(operation.eta)}</td><td><StatusBadge status={operation.status} /></td><td>{new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(operation.createdAt ?? operation.updatedAt))}</td><td><button className="table-detail-button" onClick={() => onOpen(operation.id)}>Ver detalhes <ChevronRight size={16} /></button></td></tr>)}</tbody></table></div><footer className="pagination"><span>{ordered.length === 0 ? "Nenhuma operação" : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, ordered.length)} de ${ordered.length} operações`}</span><div><button className="icon-button" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} aria-label="Página anterior"><ChevronLeft size={18} /></button><span>Página {currentPage} de {totalPages}</span><button className="icon-button" disabled={currentPage === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} aria-label="Próxima página"><ChevronRight size={18} /></button></div></footer></section></section>;
+}
+
+function OperationDetailPage({ selected, onBack, onAddItem, onUpdate }: { selected: ImportOperation; onBack: () => void; onAddItem: () => void; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) {
   const calculated = calculateImport(selected);
-  return <section className="page operations-page"><div className="page-heading"><div><p className="eyebrow">GESTÃO DE IMPORTAÇÕES</p><h1>Operações</h1><p className="muted">Custos distribuídos por item e progresso da carga em um só lugar.</p></div><button className="button button--primary" onClick={onNew}><Plus size={18} /> Nova importação</button></div>
-    <div className="operation-layout"><section className="panel operation-list"><div className="panel-title"><h2>Processos</h2><span>{operations.length} ativos</span></div>{operations.map((operation) => { const summary = calculateImport(operation); return <button className={`operation-list-item ${operation.id === selected.id ? "is-selected" : ""}`} key={operation.id} onClick={() => onSelect(operation.id)}><div><strong>{operation.reference}</strong><small>{operation.customer}</small></div><StatusBadge status={operation.status} /><small>{money.format(summary.totalCost)}</small></button>; })}</section>
-      <section className="operation-detail"><OperationHeader operation={selected} onUpdate={onUpdate} /><div className="summary-grid"><Summary label="Custo total" value={money.format(calculated.totalCost)} detail="estimativa atual" /><Summary label="Tributos estimados" value={money.format(calculated.taxes)} detail="II + IPI" /><Summary label="Peso bruto" value={`${decimal.format(calculated.totalWeight)} kg`} detail="todos os itens" /></div><section className="panel"><div className="panel-header"><div><h2>Produtos da importação</h2><p>O custo unitário já inclui rateio e tributos.</p></div><button className="button button--secondary" onClick={onAddItem}><PackagePlus size={17} /> Adicionar item</button></div><ProductsTable calculated={calculated} /></section><CostsForm operation={selected} calculated={calculated} onUpdate={onUpdate} /></section>
-    </div>
-  </section>;
+  return <section className="page operations-page"><div className="detail-heading"><button className="back-button" onClick={onBack}><ArrowLeft size={17} /> Todas as operações</button><p className="eyebrow">DETALHE DA OPERAÇÃO</p></div><OperationHeader operation={selected} onUpdate={onUpdate} /><div className="summary-grid"><Summary label="Custo total" value={money.format(calculated.totalCost)} detail="estimativa atual" /><Summary label="Tributos estimados" value={money.format(calculated.taxes)} detail="II + IPI" /><Summary label="Peso bruto" value={`${decimal.format(calculated.totalWeight)} kg`} detail="todos os itens" /></div><section className="panel"><div className="panel-header"><div><h2>Produtos da importação</h2><p>O custo unitário já inclui rateio e tributos.</p></div><button className="button button--secondary" onClick={onAddItem}><PackagePlus size={17} /> Adicionar item</button></div><ProductsTable calculated={calculated} /></section><CostsForm operation={selected} calculated={calculated} onUpdate={onUpdate} /></section>;
 }
 
 function OperationHeader({ operation, onUpdate }: { operation: ImportOperation; onUpdate: (id: string, changes: Partial<ImportOperation>) => void }) {
