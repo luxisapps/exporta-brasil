@@ -1,12 +1,13 @@
 import cors from "@fastify/cors";
 import Fastify from "fastify";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import fastifyMultipart from "@fastify/multipart";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { calculateImport, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
 await app.register(cors, { origin: true });
+await app.register(fastifyMultipart, { limits: { fileSize: 1024 * 1024, files: 1 } });
 
 const imports = new Map<string, ImportOperation>();
 const customers = new Map<string, Customer>();
@@ -29,13 +30,13 @@ const marketContextCacheTtlMs = 15 * 60 * 1000;
 let marketContextCache: { data: MarketContext; expiresAt: number } | null = null;
 const receitaCnpjApiUrl = process.env.RFB_CNPJ_API_URL?.replace(/\/$/, "");
 const receitaCnpjApiToken = process.env.RFB_CNPJ_API_TOKEN;
-const r2AccountId = process.env.R2_ACCOUNT_ID;
+const r2Endpoint = process.env.R2_ENDPOINT;
 const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID;
 const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
 const r2Bucket = process.env.R2_BUCKET;
 const r2PublicUrl = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
-const r2Enabled = Boolean(r2AccountId && r2AccessKeyId && r2SecretAccessKey && r2Bucket && r2PublicUrl);
-const r2Client = r2Enabled ? new S3Client({ region: "auto", endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`, credentials: { accessKeyId: r2AccessKeyId!, secretAccessKey: r2SecretAccessKey! } }) : null;
+const r2Enabled = Boolean(r2Endpoint && r2AccessKeyId && r2SecretAccessKey && r2Bucket && r2PublicUrl);
+const r2Client = r2Enabled ? new S3Client({ region: "auto", endpoint: r2Endpoint, forcePathStyle: true, credentials: { accessKeyId: r2AccessKeyId!, secretAccessKey: r2SecretAccessKey! } }) : null;
 const avatarContentTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type MarketContext = {
@@ -242,16 +243,22 @@ app.patch<{ Body: { name?: string; phone?: string; jobTitle?: string; avatarUrl?
   if (avatarUrl !== undefined) { if (avatarUrl !== null && (!r2PublicUrl || !avatarUrl.startsWith(`${r2PublicUrl}/profiles/${user.id}/`))) return reply.code(400).send({ message: "A imagem de perfil deve ser enviada pelo armazenamento autorizado." }); user.avatarUrl = avatarUrl || undefined; }
   return safeUser(user);
 });
-app.post<{ Body: { fileName: string; contentType: string; size: number } }>("/api/uploads/avatar", async (request, reply) => {
+app.post("/api/me/avatar", async (request, reply) => {
   const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." });
   if (!r2Enabled || !r2Client || !r2Bucket || !r2PublicUrl) return reply.code(503).send({ message: "O armazenamento de arquivos ainda não foi configurado." });
-  const { contentType, size } = request.body;
-  if (!avatarContentTypes.has(contentType) || !Number.isFinite(size) || size <= 0 || size > 1024 * 1024) return reply.code(400).send({ message: "Envie uma imagem JPG, PNG ou WebP de até 1 MB." });
-  const extension = contentType === "image/jpeg" ? "jpg" : contentType.split("/")[1];
+  const file = await (request as typeof request & { file: () => Promise<{ mimetype: string; toBuffer: () => Promise<Buffer>; file: { truncated: boolean } } | undefined> }).file();
+  if (!file) return reply.code(400).send({ message: "Selecione uma imagem para enviar." });
+  if (!avatarContentTypes.has(file.mimetype)) return reply.code(400).send({ message: "Envie uma imagem JPG, PNG ou WebP." });
+  const buffer = await file.toBuffer();
+  if (file.file.truncated || buffer.length > 1024 * 1024) return reply.code(413).send({ message: "A imagem deve ter no máximo 1 MB." });
+  const extension = file.mimetype === "image/jpeg" ? "jpg" : file.mimetype.split("/")[1];
   const key = `profiles/${user.id}/${crypto.randomUUID()}.${extension}`;
-  const uploadUrl = await getSignedUrl(r2Client, new PutObjectCommand({ Bucket: r2Bucket, Key: key, ContentType: contentType, CacheControl: "public, max-age=31536000, immutable" }), { expiresIn: 120 });
-  return { uploadUrl, publicUrl: `${r2PublicUrl}/${key}` };
+  try { await r2Client.send(new PutObjectCommand({ Bucket: r2Bucket, Key: key, Body: buffer, ContentType: file.mimetype, CacheControl: "public, max-age=31536000, immutable" })); }
+  catch (error) { request.log.error(error, "Falha no envio da foto ao R2"); return reply.code(502).send({ message: "Não foi possível enviar a imagem ao armazenamento." }); }
+  user.avatarUrl = `${r2PublicUrl}/${key}`;
+  return safeUser(user);
 });
+
 app.get("/api/users", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user || user.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); return [...users.values()].map(safeUser); });
 app.post<{ Body: { name: string; email: string; role: UserRole; initialPassword: string } }>("/api/users", async (request, reply) => { const admin = sessionUser(request.headers.authorization); if (!admin || admin.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); if (request.body.initialPassword.length < 8) return reply.code(400).send({ message: "A senha inicial deve ter ao menos 8 caracteres." }); if ([...users.values()].some((item) => item.email === request.body.email.trim().toLowerCase())) return reply.code(409).send({ message: "Este e-mail já está cadastrado." }); const user: User = { id: `user-${crypto.randomUUID()}`, name: request.body.name.trim(), email: request.body.email.trim().toLowerCase(), role: request.body.role, passwordHash: hashPassword(request.body.initialPassword), mustChangePassword: true, createdAt: new Date().toISOString() }; users.set(user.id, user); return reply.code(201).send(safeUser(user)); });
 
