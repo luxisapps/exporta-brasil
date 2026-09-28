@@ -39,10 +39,10 @@ Fundos usam preto e azul-noturno. Verde, âmbar e vermelho são reservados a est
 
 ## Tipografia e números
 
-- **Interface e texto:** Fira Sans, com fallback para `system-ui`.
-- **Identificadores, valores e referências:** Fira Code apenas para NCM, contêiner, moeda, percentuais, datas operacionais e totais tabulares.
+- **Interface e texto:** IBM Plex Sans, com fallback para `system-ui`. É uma fonte sóbria e de leitura segura para operações e finanças.
+- **Identificadores, valores e referências:** IBM Plex Mono apenas para NCM, contêiner, moeda, percentuais, datas operacionais e totais tabulares.
 - Corpo: 16px e line-height de 1.5 no mobile; 14–16px em listas densas no desktop.
-- Títulos: Fira Sans 600 ou 700; não usar caixa alta em títulos extensos.
+- Títulos: IBM Plex Sans 600 ou 700; não usar caixa alta em títulos extensos.
 - Números financeiros: `font-variant-numeric: tabular-nums` e alinhamento à direita em tabelas.
 
 ## Espaçamento, forma e elevação
