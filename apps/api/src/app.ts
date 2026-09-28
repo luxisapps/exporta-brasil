@@ -318,7 +318,7 @@ app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) =
 app.post<{ Body: Pick<ImportOperation, "reference" | "customer" | "customerId" | "supplier" | "port" | "container" | "eta"> }>("/api/imports", async (request, reply) => {
   const id = `imp-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
-  const operation: ImportOperation = { id, ...request.body, status: "draft", portStatus: "awaiting_departure", customsChannel: "pending", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
+  const operation: ImportOperation = { id, ...request.body, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
   imports.set(id, operation);
   return reply.code(201).send({ ...operation, summary: calculateImport(operation) });
 });

@@ -3,7 +3,8 @@ export type ImportStatus = "draft" | "quotation" | "in_transit" | "at_port" | "c
 export type PortStatus = "awaiting_departure" | "in_transit" | "awaiting_berth" | "unloading" | "customs_clearance" | "released";
 
 export type CustomsChannel = "green" | "yellow" | "red" | "gray";
-export type CustomsSignal = CustomsChannel | "pending";
+/** `unassigned` representa uma operação sem parametrização aduaneira ainda. */
+export type CustomsSignal = CustomsChannel | "unassigned";
 
 export type ImportItem = {
   id: string;
@@ -120,7 +121,7 @@ export const portStatusMeta: Record<PortStatus, { label: string; detail: string 
 };
 
 export const customsChannelMeta: Record<CustomsSignal, { label: string; detail: string }> = {
-  pending: { label: "Aguardando parametrização", detail: "Canal ainda não informado" },
+  unassigned: { label: "Sem canal", detail: "Canal ainda não informado" },
   green: { label: "Canal verde", detail: "Desembaraço automático" },
   yellow: { label: "Canal amarelo", detail: "Exame documental" },
   red: { label: "Canal vermelho", detail: "Exame documental e físico" },
