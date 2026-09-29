@@ -185,9 +185,9 @@ function BackofficeApp({ session, onSessionUpdate, onLogout, locale, onLocaleCha
       if (operation.id !== id) return operation;
       let automaticAudit: OperationAudit | undefined;
       if (changes.assigneeId !== undefined && changes.assigneeId !== operation.assigneeId) automaticAudit = changes.assigneeName ? { title: "Responsável atribuído", description: `${changes.assigneeName} passou a acompanhar esta importação.`, type: "milestone" } : { title: "Responsável removido", description: "A importação ficou sem responsável definido.", type: "milestone" };
-      else if (changes.status && changes.status !== operation.status) automaticAudit = { title: "Status da operação atualizado", description: `Status alterado para ${importStatusMeta[changes.status].label}.`, type: "status" };
-      else if (changes.portStatus && changes.portStatus !== operation.portStatus) automaticAudit = { title: "Status portuário atualizado", description: `Etapa alterada para ${portStatusMeta[changes.portStatus].label}.`, type: "status" };
-      else if (changes.customsChannel && changes.customsChannel !== operation.customsChannel) automaticAudit = { title: "Canal aduaneiro atualizado", description: `Canal alterado para ${customsChannelMeta[changes.customsChannel].label}.`, type: "status" };
+      else if (changes.status && changes.status !== operation.status) automaticAudit = { title: "Status da operação atualizado", description: `${importStatusMeta[operation.status].label} → ${importStatusMeta[changes.status].label}.`, type: "milestone" };
+      else if (changes.portStatus && changes.portStatus !== operation.portStatus) automaticAudit = { title: "Status portuário atualizado", description: `${portStatusMeta[operation.portStatus].label} → ${portStatusMeta[changes.portStatus].label}.`, type: "milestone" };
+      else if (changes.customsChannel && changes.customsChannel !== operation.customsChannel) automaticAudit = { title: "Canal aduaneiro atualizado", description: `${customsChannelMeta[operation.customsChannel].label} → ${customsChannelMeta[changes.customsChannel].label}.`, type: "milestone" };
       const record = audit ?? automaticAudit;
       const recordedAt = new Date().toISOString();
       const timeline = record ? [...operationTimeline(operation), { id: uid("timeline"), ...record, occurredAt: recordedAt, actorId: session.user.id, actorName: session.user.name, recordedAt }] : changes.timeline;
