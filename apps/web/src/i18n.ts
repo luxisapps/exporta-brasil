@@ -103,6 +103,22 @@ Object.assign(uiText, {
   "Revisar documentação da operação": { "en-US": "Review operation documents", "zh-CN": "审核业务文件" }, "Operação": { "en-US": "Operation", "zh-CN": "业务" }, "Concluir": { "en-US": "Complete", "zh-CN": "完成" }, "Reabrir": { "en-US": "Reopen", "zh-CN": "重新打开" }, "Remover": { "en-US": "Remove", "zh-CN": "移除" }
 });
 
+Object.assign(uiText, {
+  "Importar produtos por planilha": { "en-US": "Import products from spreadsheet", "zh-CN": "通过表格导入产品" },
+  "Produtos por planilha": { "en-US": "Products from spreadsheet", "zh-CN": "通过表格导入产品" },
+  "Envie XLSX, XLS ou CSV. As colunas Produto e Quantidade são obrigatórias; NCM, valores em USD, peso, II e IPI são opcionais.": { "en-US": "Upload XLSX, XLS, or CSV. Product and Quantity are required; NCM, USD values, weight, import duty, and IPI are optional.", "zh-CN": "上传 XLSX、XLS 或 CSV。产品和数量为必填项；NCM、美元金额、重量、进口税和 IPI 为选填项。" },
+  "Selecionar planilha": { "en-US": "Select spreadsheet", "zh-CN": "选择表格" },
+  "Lendo planilha…": { "en-US": "Reading spreadsheet…", "zh-CN": "正在读取表格…" },
+  "produto(s) encontrados": { "en-US": "product(s) found", "zh-CN": "找到的产品" },
+  "Mostrando os primeiros 5 itens da planilha.": { "en-US": "Showing the first 5 items from the spreadsheet.", "zh-CN": "显示表格中的前 5 个项目。" },
+  "Importar planilha": { "en-US": "Import spreadsheet", "zh-CN": "导入表格" },
+  "Incluir": { "en-US": "Add", "zh-CN": "添加" },
+  "produto": { "en-US": "product", "zh-CN": "产品" },
+  "produtos": { "en-US": "products", "zh-CN": "产品" },
+  "linha(s) sem quantidade válida foram ignoradas.": { "en-US": "row(s) without a valid quantity were ignored.", "zh-CN": "没有有效数量的行已被忽略。" },
+  "Não foi possível ler a planilha.": { "en-US": "Could not read the spreadsheet.", "zh-CN": "无法读取表格。" }
+});
+
 const dynamicUiText = (locale: Exclude<Locale, "pt-BR">, source: string) => {
   const ownerAssigned = source.match(/^(.+) passou a acompanhar esta importação\.$/);
   if (ownerAssigned) return locale === "en-US" ? `${ownerAssigned[1]} started monitoring this import.` : `${ownerAssigned[1]} 开始跟进此进口业务。`;
@@ -114,6 +130,12 @@ const dynamicUiText = (locale: Exclude<Locale, "pt-BR">, source: string) => {
   if (reopen) return locale === "en-US" ? `Reopen ${reopen[1]}` : `重新打开 ${reopen[1]}`;
   const available = source.match(/^(\d+) disponíveis$/);
   if (available) return locale === "en-US" ? `${available[1]} available` : `${available[1]} 个可用`;
+  const foundProducts = source.match(/^(\d+) produto\(s\) encontrados$/);
+  if (foundProducts) return locale === "en-US" ? `${foundProducts[1]} product(s) found` : `找到 ${foundProducts[1]} 个产品`;
+  const importedProducts = source.match(/^Incluir (\d+) produto(s)?$/);
+  if (importedProducts) return locale === "en-US" ? `Add ${importedProducts[1]} product${importedProducts[2] ? "s" : ""}` : `添加 ${importedProducts[1]} 个产品`;
+  const invalidRows = source.match(/^(\d+) linha\(s\) sem quantidade válida foram ignoradas\.$/);
+  if (invalidRows) return locale === "en-US" ? `${invalidRows[1]} row(s) without a valid quantity were ignored.` : `${invalidRows[1]} 个没有有效数量的行已被忽略。`;
   return source;
 };
 
