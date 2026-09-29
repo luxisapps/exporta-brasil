@@ -19,6 +19,7 @@ import brandMark from "./assets/exporta-brasil-boat.png";
 import { downloadOperationPdf, downloadOperationXlsx } from "./lib/operation-report";
 import { cropAvatar } from "./lib/avatar-crop";
 import { parseProductSheet, type ImportedProduct } from "./lib/product-sheet";
+import { ReportsView } from "./ReportsView";
 
 type View = "dashboard" | "imports" | "ports" | "pending" | "customers" | "reports" | "users" | "profile";
 type SessionUser = { id: string; name: string; email: string; role: "admin" | "operator"; mustChangePassword: boolean; createdAt: string; phone?: string; jobTitle?: string; avatarUrl?: string; preferredLocale?: Locale };
@@ -334,7 +335,8 @@ function BackofficeApp({ session, onSessionUpdate, onLogout, locale, onLocaleCha
        {view === "customers" && <CustomersView customers={customers} operations={operations} onNew={() => { setEditingCustomer(null); setShowNewCustomer(true); }} onEdit={(customer) => { setEditingCustomer(customer); setShowNewCustomer(true); }} />}
        {view === "users" && session.user.role === "admin" && <UsersManagementView token={session.token} onSessionExpired={onLogout} />}
        {view === "profile" && <MyProfileView session={session} onSessionUpdate={onSessionUpdate} />}
-       {["pending", "reports"].includes(view) && <Placeholder view={view} onNavigate={() => openOperations()} />}
+       {view === "pending" && <Placeholder view={view} onNavigate={() => openOperations()} />}
+       {view === "reports" && <ReportsView operations={operations} customers={customers} marketContext={marketContext} onOpenOperation={openOperation} onOpenOperations={() => openOperations()} />}
     </main>
     <nav className="bottom-nav" aria-label="Navegação móvel">{navigation.slice(0, 4).map(({ id, labelKey, icon: Icon }) => <button key={id} className={view === id ? "is-active" : ""} onClick={() => changeView(id)}><Icon size={19} /><span>{t(locale, labelKey)}</span></button>)}</nav>
     {showNewImport && <Dialog title={showImportCustomerForm ? "Novo cliente" : showCustomerPicker ? "Selecionar cliente" : "Nova importação"} className="dialog--wide" onClose={() => { setShowNewImport(false); setShowCustomerPicker(false); setShowImportCustomerForm(false); setImportCustomerId(""); }}><div hidden={showCustomerPicker || showImportCustomerForm}><ImportForm customers={customers} customerId={importCustomerId} portFacilities={portFacilities} portCatalogState={portCatalogState} portCatalogError={portCatalogError} onRetryPorts={loadPortCatalog} onSelectCustomer={() => setShowCustomerPicker(true)} onNewCustomer={() => setShowImportCustomerForm(true)} onSubmit={createOperation} /></div>{showCustomerPicker && <CustomerPickerContent customers={customers} onBack={() => setShowCustomerPicker(false)} onNewCustomer={() => { setShowCustomerPicker(false); setShowImportCustomerForm(true); }} onSelect={(id) => { setImportCustomerId(id); setShowCustomerPicker(false); }} />}{showImportCustomerForm && <CustomerForm customer={null} onSubmit={saveImportCustomer} onLookup={lookupCompany} onAddressLookup={lookupAddress} onCancel={() => setShowImportCustomerForm(false)} />}</Dialog>}
