@@ -30,7 +30,7 @@ type MarketContext = { dollar: { buy: number; sell: number; quotedAt: string; so
 
 const storageKey = "exporta-brasil-imports-v1";
 const customersStorageKey = "exporta-brasil-customers-v1";
-const apiUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3171";
+const apiUrl = import.meta.env.VITE_API_URL ?? "https://exporta-brasil-production.up.railway.app";
 let activeLocale: Locale = "pt-BR";
 const money = { format: (value: number) => new Intl.NumberFormat(activeLocale, { style: "currency", currency: "BRL" }).format(value) };
 const decimal = { format: (value: number) => new Intl.NumberFormat(activeLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value) };
