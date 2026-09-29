@@ -5,11 +5,11 @@ export type ImportedProduct = Omit<ImportItem, "id">;
 export type ProductSheetResult = { items: ImportedProduct[]; warnings: string[]; sheetName: string };
 
 const headerAliases: Record<keyof ImportedProduct, string[]> = {
-  name: ["produto", "nome", "descricao", "descricao comercial", "item"],
+  name: ["produto", "descricao", "descricao comercial", "nome", "item"],
   ncm: ["ncm", "codigo ncm"],
-  quantity: ["quantidade", "qtd", "qty"],
-  unitPriceUsd: ["valor unitario usd", "preco unitario usd", "preco unitario us", "unit price usd", "valor unit usd", "preco usd"],
-  grossWeightKg: ["peso bruto unitario kg", "peso bruto kg", "peso unitario kg", "peso kg", "peso"],
+  quantity: ["quantidade", "qtd", "qty", "ttl qty", "total qty", "total quantidade"],
+  unitPriceUsd: ["valor unitario usd", "preco unitario usd", "preco unitario us", "unit price usd", "valor unit usd", "preco usd", "cfr unitario", "cfr unit"],
+  grossWeightKg: ["peso bruto unitario kg", "peso bruto kg", "peso unitario kg", "peso kg", "g w", "g w kg", "peso"],
   iiRate: ["ii", "aliquota ii", "ii percent", "ii %"],
   ipiRate: ["ipi", "aliquota ipi", "ipi percent", "ipi %"]
 };
@@ -33,7 +33,7 @@ export async function parseProductSheet(file: File): Promise<ProductSheetResult>
   const headerRowIndex = rows.findIndex((row) => row.some((cell) => headerAliases.name.includes(normalizeHeader(cell))));
   if (headerRowIndex < 0) throw new Error("Não encontramos a coluna Produto, Nome ou Descrição na planilha.");
   const headers = rows[headerRowIndex].map(normalizeHeader);
-  const column = (field: keyof ImportedProduct) => headers.findIndex((header) => headerAliases[field].includes(header));
+  const column = (field: keyof ImportedProduct) => headerAliases[field].map((alias) => headers.indexOf(alias)).find((index) => index >= 0) ?? -1;
   const nameColumn = column("name");
   const quantityColumn = column("quantity");
   if (nameColumn < 0 || quantityColumn < 0) throw new Error("A planilha precisa ter as colunas Produto (ou Nome) e Quantidade.");
