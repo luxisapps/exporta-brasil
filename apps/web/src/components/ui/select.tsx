@@ -21,10 +21,11 @@ export const SelectContent = forwardRef<ElementRef<typeof SelectPrimitive.Conten
 ));
 SelectContent.displayName = "SelectContent";
 
-export const SelectItem = forwardRef<ElementRef<typeof SelectPrimitive.Item>, ComponentPropsWithoutRef<typeof SelectPrimitive.Item>>(({ children, className = "", ...props }, ref) => (
+type SelectItemProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & { hideIndicator?: boolean };
+export const SelectItem = forwardRef<ElementRef<typeof SelectPrimitive.Item>, SelectItemProps>(({ children, className = "", hideIndicator = false, ...props }, ref) => (
   <SelectPrimitive.Item ref={ref} className={`shadcn-select-item ${className}`} {...props}>
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-    <SelectPrimitive.ItemIndicator className="shadcn-select-indicator"><Check size={13} aria-hidden="true" /></SelectPrimitive.ItemIndicator>
+    {!hideIndicator && <SelectPrimitive.ItemIndicator className="shadcn-select-indicator"><Check size={13} aria-hidden="true" /></SelectPrimitive.ItemIndicator>}
   </SelectPrimitive.Item>
 ));
 SelectItem.displayName = "SelectItem";

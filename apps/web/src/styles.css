@@ -117,4 +117,4 @@ h1, h2, p { margin: 0; } small { display: block; }
 .language-select .shadcn-select-chevron { display:none; }
 .language-flag { display:block; width:21px; height:15px; overflow:hidden; border-radius:2px; box-shadow:0 1px 3px rgba(0,0,0,.35); }
 .language-menu { min-width:43px; }
-.language-menu .shadcn-select-item { justify-content:center; width:35px; }
+.language-menu .shadcn-select-item { justify-content:center; width:35px; padding:0; }
