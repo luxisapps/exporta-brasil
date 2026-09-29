@@ -1,0 +1,5 @@
+{
+  "buildCommand": "npm run build --workspace=@exporta/domain && npm run build --workspace=@exporta/web",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
