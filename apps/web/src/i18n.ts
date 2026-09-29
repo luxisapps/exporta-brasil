@@ -118,7 +118,13 @@ const dynamicUiText = (locale: Exclude<Locale, "pt-BR">, source: string) => {
 };
 
 const baseLocalizeUiText = localizeUiText;
+function uiSourceText(value: string) {
+  if (uiText[value]) return value;
+  for (const [source, translations] of Object.entries(uiText)) if (Object.values(translations).includes(value)) return source;
+  return value;
+}
 export function translateUiText(locale: Locale, source: string) {
-  const translated = baseLocalizeUiText(locale, source);
-  return translated === source && locale !== "pt-BR" ? dynamicUiText(locale, source) : translated;
+  const base = uiSourceText(source);
+  const translated = baseLocalizeUiText(locale, base);
+  return translated === base && locale !== "pt-BR" ? dynamicUiText(locale, base) : translated;
 }

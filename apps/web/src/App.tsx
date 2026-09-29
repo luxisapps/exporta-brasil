@@ -93,7 +93,7 @@ function LanguageSelect({ locale, onChange }: { locale: Locale; onChange: (local
   return <Select value={locale} onValueChange={(value) => onChange(value as Locale)}><SelectTrigger className="language-select" aria-label={`${t(locale, "language")}: ${languageOptions[locale].label}`}><SelectValue><LanguageFlag locale={locale} /></SelectValue></SelectTrigger><SelectContent className="language-menu" aria-label={t(locale, "language")}>{locales.map((item) => <SelectItem value={item} key={item} hideIndicator aria-label={languageOptions[item].label}><LanguageFlag locale={item} /></SelectItem>)}</SelectContent></Select>;
 }
 
-const localizedTextNodes = new WeakMap<Text, string>();
+let localizedTextNodes = new WeakMap<Text, string>();
 const localizableAttributes = ["placeholder", "aria-label", "title", "alt"] as const;
 function localizeDocument(locale: Locale) {
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -121,6 +121,8 @@ function localizeDocument(locale: Locale) {
 }
 function useUiLocalization(locale: Locale) {
   useEffect(() => {
+    localizedTextNodes = new WeakMap<Text, string>();
+    for (const attribute of localizableAttributes) document.querySelectorAll(`[data-i18n-source-${attribute}]`).forEach((element) => element.removeAttribute(`data-i18n-source-${attribute}`));
     let queued = false;
     const update = () => { queued = false; localizeDocument(locale); };
     update();
