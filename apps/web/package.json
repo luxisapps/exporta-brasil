@@ -13,12 +13,14 @@
     "@exporta/domain": "*",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-select": "^2.3.7",
+    "@radix-ui/react-slider": "^1.4.7",
     "@radix-ui/react-toggle": "^1.1.18",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.468.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-easy-crop": "^5.5.7"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",
