@@ -135,7 +135,6 @@ h1, h2, p { margin: 0; } small { display: block; }
 .avatar-editor-dialog { width:min(620px,calc(100% - 32px)); overflow:hidden; }
 .avatar-editor { display:grid; gap:16px; padding:20px; }
 .avatar-editor__stage { position:relative; min-height:330px; overflow:hidden; border:1px solid rgba(147,197,253,.2); border-radius:12px; background:#05070a; }
-.avatar-editor__stage::after { position:absolute; inset:0; pointer-events:none; content:""; background:radial-gradient(circle at center,transparent 38%,rgba(2,6,12,.56) 38.5%); }
 .avatar-editor__hint { margin:0; color:#9bacc0; font-size:12px; text-align:center; }
 .avatar-editor__controls { display:grid; gap:13px; padding:14px; border:1px solid rgba(148,163,184,.12); border-radius:12px; background:rgba(17,25,36,.62); }
 .avatar-editor__control { display:grid; grid-template-columns:112px 32px minmax(0,1fr) auto; align-items:center; gap:10px; }
