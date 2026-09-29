@@ -15,7 +15,7 @@ import { DialogClose, DialogContent, DialogRoot, DialogTitle } from "./component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 import { Slider } from "./components/ui/slider";
 import { Toggle } from "./components/ui/toggle";
-import brandMark from "./assets/exporta-brasil-mark.png";
+import brandMark from "./assets/exporta-brasil-boat.png";
 import { downloadOperationPdf, downloadOperationXlsx } from "./lib/operation-report";
 import { cropAvatar } from "./lib/avatar-crop";
 import { parseProductSheet, type ImportedProduct } from "./lib/product-sheet";
