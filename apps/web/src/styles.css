@@ -148,3 +148,10 @@ h1, h2, p { margin: 0; } small { display: block; }
 .avatar-editor__error { margin:0; padding:10px 12px; border:1px solid rgba(240,82,82,.33); border-radius:9px; color:#fecaca; background:rgba(127,29,29,.2); font-size:12px; line-height:1.45; }
 .avatar-editor__actions { display:flex; justify-content:flex-end; gap:10px; padding-top:2px; }
 @media (max-width:639px) { .avatar-editor-dialog { width:calc(100% - 20px); }.avatar-editor { gap:14px; padding:16px; }.avatar-editor__stage { min-height:280px; }.avatar-editor__control { grid-template-columns:32px minmax(0,1fr) auto; }.avatar-editor__control>span { grid-column:1/-1; }.avatar-editor__actions .button { flex:1; }.avatar-editor__reset { min-width:66px; } }
+
+.operation-assignee__select { width:100%; min-height:36px; justify-content:space-between; }
+.operation-assignee__content { min-width:var(--radix-select-trigger-width); }
+.assignee-option { display:flex; align-items:center; gap:8px; min-width:0; }
+.assignee-option .user-avatar,.assignee-option .avatar { width:25px; height:25px; font-size:9px; }
+.operation-assignee__select .assignee-option { color:#dce8f6; font-size:12px; font-weight:600; }
+.operation-assignee__content .shadcn-select-item { min-height:38px; }
