@@ -41,3 +41,8 @@ Neste estágio, o cliente guarda os dados de demonstração no navegador e a API
 - [Workflow de design com Impeccable](docs/07-workflow-impeccable.md)
 - [Plano de execução](docs/08-plano-execucao.md)
 - [Integração Siscomex e portos](docs/09-integracao-portal-unico-e-portos.md)
+
+
+### Sessões
+
+Defina `AUTH_SECRET` com uma sequência aleatória longa no ambiente da API, especialmente no Railway. A mesma chave mantém as sessões válidas entre reinicializações do serviço.
