@@ -305,3 +305,14 @@ h1, h2, p { margin: 0; } small { display: block; }
 .timeline-pagination__controls .button:disabled { opacity:.45; cursor:not-allowed; }
 @media (max-width:767px) { .timeline-pagination-footer { flex-direction:column; align-items:stretch; padding:16px; gap:12px; } .timeline-pagination__controls { justify-content:space-between; gap:8px; } .timeline-pagination__controls .button { min-height:44px; padding:8px 10px; } }
 .operation-detail-page { grid-template-columns:minmax(0,1fr); } .timeline-panel { min-width:0; } .operation-timeline li>div { min-width:0; overflow-wrap:anywhere; }
+
+/* Keep import field labels and controls aligned even when one has help text. */
+.import-form { align-items:start; column-gap:20px; row-gap:20px; }
+.import-form>.field { min-width:0; align-content:start; gap:8px; }
+.import-form .field>span { line-height:16px; }
+.import-form .field>input:not([type="hidden"]),.import-form .customer-picker__trigger,.import-form .date-picker__trigger { height:44px; min-height:44px; font-size:13px; }
+.import-form .customer-picker { align-items:center; gap:12px; }
+.import-form .customer-picker__trigger { width:100%; min-width:0; }
+.import-form .import-form__new-customer { flex:0 0 auto; height:44px; font-size:13px; }
+.import-form .field>small { margin:0; font-size:11px; line-height:1.5; }
+@media (max-width:767px) { .import-form { grid-template-columns:minmax(0,1fr); gap:18px; padding:18px 16px; } .import-form .customer-picker { flex-direction:row; align-items:center; gap:8px; } .import-form .import-form__new-customer { padding:0 10px; font-size:12px; } }

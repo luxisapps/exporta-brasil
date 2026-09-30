@@ -557,8 +557,29 @@ function ProductSheetImportDialogContent({ onConfirm }: { onConfirm: (items: Imp
 function ImportForm({ reference, customers, customerId, port, onSelectPort, onSelectCustomer, onNewCustomer, onSubmit }: { reference: string; customers: Customer[]; customerId: string; port: string; onSelectPort: () => void; onSelectCustomer: () => void; onNewCustomer: () => void; onSubmit: (event: FormEvent<HTMLFormElement>, importedItems: ImportedProduct[]) => void }) {
   const customer = customers.find((item) => item.id === customerId);
   const [importedItems, setImportedItems] = useState<ImportedProduct[]>([]);
-  return <form className="form-grid" onSubmit={(event) => onSubmit(event, importedItems)}><label className="field"><span>Referência</span><Input name="reference" value={reference} readOnly aria-label="Referência automática" /></label><div className="field"><span>Cliente</span><input name="customerId" value={customerId} type="hidden" required readOnly /><div className="customer-picker"><button className="customer-picker__trigger" type="button" onClick={onSelectCustomer}><span>{customer ? customer.tradeName || customer.legalName : "Selecionar cliente"}</span><ChevronRight size={17} /></button><button className="text-button" type="button" onClick={onNewCustomer}><Plus size={15} /> Novo cliente</button></div></div><div className="field"><span>Porto de destino</span><input type="hidden" name="port" value={port} readOnly /><Button className="customer-picker__trigger" onClick={onSelectPort}><span data-localized>{port || translateUiText(activeLocale, "Porto a definir")}</span><ChevronRight size={17} /></Button><small className="muted">Pode ser definido depois nos detalhes da importação.</small></div><label className="field"><span>Contêiner</span><input name="container" required placeholder="ABCD 123456-7" /></label><label className="field"><span>ETA</span><DatePicker name="eta" label="ETA" required /></label><div className="full"><ProductSheetPicker onProductsChange={setImportedItems} /></div><button className="button button--primary form-submit" type="submit"><Plus size={18} /> Criar importação</button></form>;
+  return <form className="form-grid import-form" onSubmit={(event) => onSubmit(event, importedItems)}>
+    <div className="field full">
+      <span id="import-customer-label">Cliente</span>
+      <input name="customerId" value={customerId} type="hidden" readOnly />
+      <div className="customer-picker">
+        <Button className="customer-picker__trigger" aria-labelledby="import-customer-label" onClick={onSelectCustomer}><span>{customer ? customer.tradeName || customer.legalName : "Selecionar cliente"}</span><ChevronRight size={17} /></Button>
+        <Button className="button button--secondary import-form__new-customer" onClick={onNewCustomer}><Plus size={15} /> Novo cliente</Button>
+      </div>
+    </div>
+    <label className="field"><span>Referência</span><Input name="reference" value={reference} readOnly aria-label="Referência automática" /></label>
+    <label className="field"><span>Contêiner</span><Input name="container" required placeholder="ABCD 123456-7" /></label>
+    <div className="field">
+      <span id="import-port-label">Porto de destino</span>
+      <input type="hidden" name="port" value={port} readOnly />
+      <Button className="customer-picker__trigger" aria-labelledby="import-port-label" aria-describedby="import-port-help" onClick={onSelectPort}><span data-localized>{port || translateUiText(activeLocale, "Porto a definir")}</span><ChevronRight size={17} /></Button>
+      <small id="import-port-help" className="muted">Pode ser definido depois nos detalhes da importação.</small>
+    </div>
+    <label className="field"><span>ETA</span><DatePicker name="eta" label="ETA" required /></label>
+    <div className="full"><ProductSheetPicker onProductsChange={setImportedItems} /></div>
+    <Button className="button button--primary form-submit" type="submit"><Plus size={18} /> Criar importação</Button>
+  </form>;
 }
+
 function PortPickerContent({ facilities, state, error, onRetry, onBack, onSelect }: { facilities: PortFacility[]; state: "idle" | "loading" | "ready" | "error"; error: string; onRetry: () => void; onBack: () => void; onSelect: (port: string) => void }) {
   const [query, setQuery] = useState("");
   const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
