@@ -185,3 +185,9 @@ Object.assign(uiText, {
   "Nenhum porto corresponde à busca.": { "en-US": "No ports match your search.", "zh-CN": "没有符合搜索条件的港口。" },
   "Porto de destino atualizado": { "en-US": "Destination port updated", "zh-CN": "目的港已更新" }
 });
+
+Object.assign(uiText, {
+  "Paginação da linha do tempo": { "en-US": "Timeline pagination", "zh-CN": "时间线分页" },
+  "Anterior": { "en-US": "Previous", "zh-CN": "上一页" },
+  "Próxima": { "en-US": "Next", "zh-CN": "下一页" }
+});
