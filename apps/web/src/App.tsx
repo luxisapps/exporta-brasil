@@ -18,7 +18,8 @@ import { Toggle } from "./components/ui/toggle";
 import brandMark from "./assets/exporta-brasil-boat.png";
 import { downloadOperationPdf, downloadOperationXlsx } from "./lib/operation-report";
 import { cropAvatar } from "./lib/avatar-crop";
-import { parseProductSheet, type ImportedProduct } from "./lib/product-sheet";
+import { type ImportedProduct } from "./lib/product-sheet";
+import { parseProductSheet } from "./lib/product-sheet-loader";
 import { ReportsView } from "./ReportsView";
 import { NcmField } from "./components/NcmField";
 import { DatePicker } from "./components/ui/date-picker";
@@ -543,8 +544,8 @@ function ProductSheetPicker({ onProductsChange }: { onProductsChange: (items: Im
       setError(reason instanceof Error ? reason.message : "Não foi possível ler a planilha.");
     } finally { setReading(false); }
   };
-  return <section className="product-sheet-importer">
-    <div className="product-sheet-importer__intro"><div><strong>Produtos por planilha</strong><p>Envie XLSX, XLS ou CSV. As colunas Produto e Quantidade são obrigatórias; NCM, valores em USD, peso, II e IPI são opcionais.</p></div><label className="button button--secondary" htmlFor="product-sheet-input"><Upload size={17} /> {reading ? "Lendo planilha…" : "Selecionar planilha"}<input id="product-sheet-input" className="sr-only" type="file" accept=".xlsx,.xls,.csv" onChange={(event) => { void readFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label></div>
+  return <section className="product-sheet-importer" aria-busy={reading}>
+    <div className="product-sheet-importer__intro"><div><strong>Produtos por planilha</strong><p>Envie XLSX, XLS ou CSV. As colunas Produto e Quantidade são obrigatórias; NCM, valores em USD, peso, II e IPI são opcionais.</p></div><label className="button button--secondary" htmlFor="product-sheet-input"><Upload size={17} /> {reading ? "Lendo planilha…" : "Selecionar planilha"}<input id="product-sheet-input" className="sr-only" type="file" disabled={reading} accept=".xlsx,.xls,.csv" onChange={(event) => { void readFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label></div>
     {error && <p className="product-sheet-importer__error" role="alert">{error}</p>}
     {warnings.length > 0 && <p className="product-sheet-importer__warning" role="status">{warnings.length} linha(s) sem quantidade válida foram ignoradas.</p>}
     {items.length > 0 && <div className="product-sheet-importer__preview"><div><strong>{fileName}</strong><span>{items.length} produto(s) encontrados</span></div><div className="table-scroll"><table><thead><tr><th>Produto</th><th>Qtd.</th><th>NCM</th><th>USD unit.</th></tr></thead><tbody>{items.slice(0, 5).map((item, index) => <tr key={`${item.name}-${index}`}><td><strong>{item.name}</strong></td><td>{item.quantity}</td><td>{item.ncm || "—"}</td><td>{item.unitPriceUsd ? new Intl.NumberFormat(activeLocale, { style: "currency", currency: "USD" }).format(item.unitPriceUsd) : "—"}</td></tr>)}</tbody></table></div>{items.length > 5 && <small>Mostrando os primeiros 5 itens da planilha.</small>}</div>}

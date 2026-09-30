@@ -33,13 +33,20 @@ const aliases = (field: Field) => headerAliases[field]?.map(normalizeHeader) ?? 
 const findHeader = (rows: unknown[][]) => rows.findIndex((row) => row.some((cell) => aliases("name").includes(normalizeHeader(cell))));
 
 export async function parseProductSheet(file: File): Promise<ProductSheetResult> {
-  if (file.size > 5 * 1024 * 1024) throw new Error("A planilha deve ter no máximo 5 MB.");
   const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
-  const candidates = workbook.SheetNames.map((sheetName) => ({ sheetName, rows: XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, defval: "", raw: false }) })).map((candidate) => ({ ...candidate, headerRowIndex: findHeader(candidate.rows) })).filter((candidate) => candidate.headerRowIndex >= 0);
-  const selected = candidates.sort((left, right) => right.rows.length - left.rows.length)[0];
+  let selected: { sheetName: string; rows: unknown[][]; headerRowIndex: number } | undefined;
+  let candidateCount = 0;
+  for (const sheetName of workbook.SheetNames) {
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, defval: "", raw: false });
+    const headerRowIndex = findHeader(rows);
+    if (headerRowIndex < 0) continue;
+    candidateCount += 1;
+    if (!selected || rows.length > selected.rows.length) selected = { sheetName, rows, headerRowIndex };
+  }
   if (!selected) throw new Error("Não encontramos uma aba com a coluna Produto, Nome ou Descrição.");
   const headers = selected.rows[selected.headerRowIndex].map(normalizeHeader);
-  const column = (field: Field) => aliases(field).map((alias) => headers.indexOf(alias)).find((index) => index >= 0) ?? -1;
+  const columns = new Map(Object.keys(headerAliases).map((field) => [field, aliases(field as Field).map((alias) => headers.indexOf(alias)).find((index) => index >= 0) ?? -1]));
+  const column = (field: Field) => columns.get(field) ?? -1;
   const nameColumn = column("name"); const quantityColumn = column("quantity");
   if (nameColumn < 0 || quantityColumn < 0) throw new Error("A planilha precisa ter as colunas Produto (ou Nome) e Quantidade.");
   const warnings: string[] = [];
@@ -54,6 +61,6 @@ export async function parseProductSheet(file: File): Promise<ProductSheetResult>
     return [{ name, englishName:text("englishName") || undefined, sku:text("sku") || undefined, description:text("description") || undefined, leadTime:text("leadTime") || undefined, quantity, ncm:text("ncm"), unitPriceUsd:value("unitPriceUsd"), grossWeightKg: boxWeightKg && boxCount ? boxWeightKg * boxCount / quantity : value("grossWeightKg"), boxWeightKg:boxWeightKg || undefined, boxCount:boxCount || undefined, unitsPerBox:value("unitsPerBox") || undefined, lengthCm:value("lengthCm") || undefined, widthCm:value("widthCm") || undefined, heightCm:value("heightCm") || undefined, totalVolumeM3:value("totalVolumeM3") || undefined, iiRate:value("iiRate"), ipiRate:value("ipiRate") }];
   });
   if (!items.length) throw new Error("Nenhum produto válido foi encontrado na planilha.");
-  if (candidates.length > 1) warnings.push(`Aba “${selected.sheetName}” selecionada automaticamente por conter a maior lista de produtos.`);
+  if (candidateCount > 1) warnings.push(`Aba “${selected.sheetName}” selecionada automaticamente por conter a maior lista de produtos.`);
   return { items, warnings, sheetName: selected.sheetName };
 }
