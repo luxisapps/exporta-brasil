@@ -21,7 +21,7 @@ function details(operation: ImportOperation, context: ReportContext) {
     opening: [
       ["Referência", operation.reference, "Cliente", operation.customer],
       ["Contêiner", operation.container || "—", "Responsável", operation.assigneeName || "—"],
-      ["Porto de destino", operation.port, "ETA", formatDate(operation.eta)],
+      ["Porto de destino", operation.port || "Porto a definir", "ETA", formatDate(operation.eta)],
       ["Status", importStatusMeta[operation.status]?.label ?? operation.status, "Status portuário", portStatusMeta[operation.portStatus]?.label ?? operation.portStatus],
       ["Canal aduaneiro", customsChannelMeta[operation.customsChannel]?.label ?? operation.customsChannel, "Atualizado em", formatDate(operation.updatedAt)]
     ],

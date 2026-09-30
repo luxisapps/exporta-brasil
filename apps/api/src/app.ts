@@ -390,10 +390,10 @@ app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) =
   return { ...operation, summary: calculateImport(operation) };
 });
 
-app.post<{ Body: Pick<ImportOperation, "customer" | "customerId" | "port" | "container" | "eta"> }>("/api/imports", async (request, reply) => {
+app.post<{ Body: Pick<ImportOperation, "customer" | "customerId" | "container" | "eta"> & Partial<Pick<ImportOperation, "port">> }>("/api/imports", async (request, reply) => {
   const id = `imp-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
-  const operation: ImportOperation = { id, reference: nextImportReference(imports.values()), customer: request.body.customer, customerId: request.body.customerId, port: request.body.port, container: request.body.container, eta: request.body.eta, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
+  const operation: ImportOperation = { id, reference: nextImportReference(imports.values()), customer: request.body.customer, customerId: request.body.customerId, port: request.body.port ?? "", container: request.body.container, eta: request.body.eta, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
   imports.set(id, operation);
   return reply.code(201).send({ ...operation, summary: calculateImport(operation) });
 });
@@ -406,7 +406,7 @@ app.post<{ Params: { id: string }; Body: Omit<ImportItem, "id"> }>("/api/imports
   return { ...operation, summary: calculateImport(operation) };
 });
 
-app.patch<{ Params: { id: string }; Body: Partial<Pick<ImportOperation, "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "status" | "portStatus" | "customsChannel">> }>("/api/imports/:id", async (request, reply) => {
+app.patch<{ Params: { id: string }; Body: Partial<Pick<ImportOperation, "port" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "status" | "portStatus" | "customsChannel">> }>("/api/imports/:id", async (request, reply) => {
   const operation = imports.get(request.params.id);
   if (!operation) return reply.code(404).send({ message: "Importação não encontrada" });
   Object.assign(operation, request.body as { status?: ImportStatus; portStatus?: PortStatus; customsChannel?: CustomsSignal });

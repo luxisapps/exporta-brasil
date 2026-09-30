@@ -171,3 +171,17 @@ export function translateUiText(locale: Locale, source: string) {
   const translated = baseLocalizeUiText(locale, base);
   return translated === base && locale !== "pt-BR" ? dynamicUiText(locale, base) : translated;
 }
+
+Object.assign(uiText, {
+  "Porto a definir": { "en-US": "Port to be determined", "zh-CN": "港口待定" },
+  "Selecionar porto": { "en-US": "Select port", "zh-CN": "选择港口" },
+  "Definir porto": { "en-US": "Set port", "zh-CN": "设置港口" },
+  "Alterar porto": { "en-US": "Change port", "zh-CN": "更改港口" },
+  "Ainda não sei o porto": { "en-US": "Port not yet known", "zh-CN": "尚未确定港口" },
+  "Pode ser definido depois nos detalhes da importação.": { "en-US": "You can set it later in the import details.", "zh-CN": "可稍后在进口详情中设置。" },
+  "Definir depois nos detalhes da importação": { "en-US": "Set later in the import details", "zh-CN": "稍后在进口详情中设置" },
+  "Buscar por porto, cidade ou estado": { "en-US": "Search by port, city or state", "zh-CN": "按港口、城市或州搜索" },
+  "Buscar portos": { "en-US": "Search ports", "zh-CN": "搜索港口" },
+  "Nenhum porto corresponde à busca.": { "en-US": "No ports match your search.", "zh-CN": "没有符合搜索条件的港口。" },
+  "Porto de destino atualizado": { "en-US": "Destination port updated", "zh-CN": "目的港已更新" }
+});
