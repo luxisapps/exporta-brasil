@@ -8,7 +8,7 @@ Atualizado em 30/09/2026. Este documento distingue trabalho implementado de trab
 - Seleção e validação no cadastro/edição de produto. Descrição oficial exibida junto do código.
 - Conector de IA no servidor, autenticado: identifica posições SH, recebe candidatos existentes e sugere até três códigos com justificativas e perguntas pendentes.
 - A IA só ordena candidatos; códigos e descrições vêm do catálogo oficial. Não gera alíquotas.
-- Ativação da IA depende de OPENAI_API_KEY no serviço API do Railway. NCM_AI_MODEL permite configurar o modelo; padrão gpt-6.1-sol. A assinatura do Codex não configura automaticamente uma chave para o aplicativo.
+- A sugestão usa Gemini na API do servidor, com GEMINI_API_KEY no serviço API do Railway. NCM_AI_MODEL permite configurar o modelo; padrão gemini-3.8-flash. A resposta é validada contra o catálogo vigente e exige confirmação humana. As chamadas usam store=false.
 - Cache de catálogo por 24 horas, chamadas concorrentes compartilham a mesma consulta. Em falha de atualização, a API identifica o uso de cache antigo.
 - Ainda não há consulta tributária oficial nem comprovação de qualidade das sugestões em produtos reais.
 
@@ -91,7 +91,7 @@ Atualizado em 30/09/2026. Este documento distingue trabalho implementado de trab
 
 ## Dependências externas
 
-1. OPENAI_API_KEY com faturamento/limites para IA no aplicativo.
+1. GEMINI_API_KEY com faturamento/limites para IA no aplicativo.
 2. Certificado e representante com perfil autorizado no Portal Único, conforme serviços desejados.
 3. Revisão dos casos reais com Rose/despachante/contador para validar classificação e regras fiscais.
 

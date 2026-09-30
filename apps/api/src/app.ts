@@ -345,7 +345,7 @@ const ncmAiRequests = new Map<string, number>();
 app.post<{ Body: { description?: string } }>("/api/ncm/suggestions", async (request, reply) => {
   const user = sessionUser(request.headers.authorization);
   if (!user) return reply.code(401).send({ message: "Sessão inválida. Entre novamente." });
-  if (!process.env.OPENAI_API_KEY) return reply.code(503).send({ message: "A sugestão por IA ainda não foi configurada. Use a busca no catálogo oficial." });
+  if (!process.env.GEMINI_API_KEY) return reply.code(503).send({ message: "A sugestão por IA ainda não foi configurada. Use a busca no catálogo oficial." });
   const description = request.body?.description;
   if (typeof description !== "string" || description.trim().length < 15 || description.length > 4000) return reply.code(400).send({ message: "Descreva material, função e características do produto (15 a 4000 caracteres)." });
   const last = ncmAiRequests.get(user.id) ?? 0;
