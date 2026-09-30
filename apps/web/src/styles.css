@@ -264,6 +264,8 @@ h1, h2, p { margin: 0; } small { display: block; }
 .ncm-search-input { display: flex; align-items: center; gap: 8px; }
 .ncm-search-input input { min-width: 0; width: 100%; }
 .ncm-field .shadcn-select-trigger { width: 100%; min-width: 0; }
+.ncm-field > .shadcn-select-trigger { display: flex; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid #354155; border-radius: 8px; background: #0a1019; color: #edf2fa; text-align: left; }
+.ncm-selected-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ncm-option { display: grid; gap: 4px; max-width: min(65ch, 75vw); white-space: normal; }
 .ncm-option span { font-size: 12px; line-height: 1.5; }
 .ncm-description { margin: 0; line-height: 1.6; font-size: 13px; }
