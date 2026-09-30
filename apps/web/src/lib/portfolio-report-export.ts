@@ -5,7 +5,7 @@ import { calculateImport } from "@exporta/domain";
 import type { PortfolioReport, PortfolioReportFilters, PortfolioReportKey } from "./portfolio-report";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const reportTitle: Record<PortfolioReportKey, string> = { executive: "Visão executiva", operations: "Operação e riscos", costs: "Custos e fechamento", partners: "Clientes, fornecedores e portos", compliance: "Conformidade documental", market: "Mercado e benchmark" };
+const reportTitle: Record<PortfolioReportKey, string> = { executive: "Visão executiva", operations: "Operação e riscos", costs: "Custos e fechamento", partners: "Clientes e portos", compliance: "Conformidade documental", market: "Mercado e benchmark" };
 const filename = (key: PortfolioReportKey, extension: string) => `relatorio-${key}-${new Date().toISOString().slice(0, 10)}.${extension}`;
 const filtersText = (filters: PortfolioReportFilters) => `${filters.from || "início"} a ${filters.to || "hoje"}`;
 const summaryRows = (report: PortfolioReport) => [["Operações no período", String(report.totalOperations)], ["Operações abertas", String(report.activeOperations)], ["Custo projetado", money.format(report.totalCost)], ["FOB convertido", money.format(report.totalFob)], ["Logística", money.format(report.totalLogistics)], ["Tributos", money.format(report.totalTaxes)], ["Peso estimado", `${report.totalWeight.toLocaleString("pt-BR")} kg`], ["ETA vencido", String(report.overdueEtas)], ["Pendências abertas", String(report.openTasks)], ["Documentos pendentes", String(report.pendingDocuments)]];
@@ -15,8 +15,8 @@ export function downloadPortfolioReportXlsx(key: PortfolioReportKey, report: Por
   const workbook = XLSX.utils.book_new();
   const summary = XLSX.utils.aoa_to_sheet([["Exporta Brasil", reportTitle[key]], ["Período", filtersText(filters)], [], ["Indicador", "Valor"], ...summaryRows(report)]);
   summary["!cols"] = [{ wch: 32 }, { wch: 24 }]; XLSX.utils.book_append_sheet(workbook, summary, "Resumo");
-  const operations = XLSX.utils.aoa_to_sheet([["Referência", "Cliente", "Fornecedor", "Porto", "ETA", "Status", "Canal", "Custo projetado"], ...report.operations.map((operation) => [operation.reference, operation.customer, operation.supplier, operation.port, operation.eta, operation.status, operation.customsChannel, calculateCost(operation)])]);
-  operations["!cols"] = [{ wch: 17 }, { wch: 28 }, { wch: 28 }, { wch: 26 }, { wch: 13 }, { wch: 18 }, { wch: 14 }, { wch: 18 }]; XLSX.utils.book_append_sheet(workbook, operations, "Operações");
+  const operations = XLSX.utils.aoa_to_sheet([["Referência", "Cliente", "Porto", "ETA", "Status", "Canal", "Custo projetado"], ...report.operations.map((operation) => [operation.reference, operation.customer, operation.port, operation.eta, operation.status, operation.customsChannel, calculateCost(operation)])]);
+  operations["!cols"] = [{ wch: 17 }, { wch: 28 }, { wch: 26 }, { wch: 13 }, { wch: 18 }, { wch: 14 }, { wch: 18 }]; XLSX.utils.book_append_sheet(workbook, operations, "Operações");
   const costs = XLSX.utils.aoa_to_sheet([["Componente", "Valor"], ...tableRows(report.costRows), [], ["Cliente", "Custo projetado"], ...tableRows(report.customerRows), [], ["Porto", "Custo projetado"], ...tableRows(report.portRows), [], ["NCM", "Custo projetado"], ...tableRows(report.ncmRows)]);
   costs["!cols"] = [{ wch: 34 }, { wch: 20 }]; XLSX.utils.book_append_sheet(workbook, costs, "Custos e dimensões");
   const risks = XLSX.utils.aoa_to_sheet([["Prioridade", "Referência", "Cliente", "Motivo", "ETA"], ...report.risks.map((risk) => [risk.severity, risk.operation.reference, risk.operation.customer, risk.reason, risk.operation.eta])]);

@@ -32,6 +32,7 @@ const messages = {
 export function t(locale: Locale, key: MessageKey) { return messages[locale][key] ?? messages["pt-BR"][key]; }
 
 export const uiText: Record<string, Partial<Record<Exclude<Locale, "pt-BR">, string>>> = {
+  "Referência automática": { "en-US": "Automatic reference", "zh-CN": "自动编号" },
   "ACESSO OPERACIONAL": { "en-US": "OPERATIONAL ACCESS", "zh-CN": "运营访问" },
   "Boas-vindas.": { "en-US": "Welcome.", "zh-CN": "欢迎。" },
   "Entre para acompanhar suas operações, custos e decisões portuárias.": { "en-US": "Sign in to track your operations, costs, and port decisions.", "zh-CN": "登录以跟踪您的业务、成本和港口决策。" },
@@ -126,7 +127,7 @@ Object.assign(uiText, {
   "Visão executiva": { "en-US": "Executive overview", "zh-CN": "管理层概览" }, "Custo, volume, risco e prioridades no mesmo recorte.": { "en-US": "Cost, volume, risk, and priorities in one view.", "zh-CN": "在同一视图中查看成本、数量、风险和优先事项。" },
   "Operação e riscos": { "en-US": "Operations and risks", "zh-CN": "业务与风险" }, "ETA, canais, pendências e pontos que pedem ação.": { "en-US": "ETA, channels, tasks, and items requiring action.", "zh-CN": "预计到港日、通道、待办事项和需要处理的项目。" },
   "Custos e fechamento": { "en-US": "Costs and closing", "zh-CN": "成本与结算" }, "Composição projetada e concentração por NCM.": { "en-US": "Projected composition and concentration by NCM.", "zh-CN": "按 NCM 查看预计构成和集中度。" },
-  "Clientes e parceiros": { "en-US": "Customers and partners", "zh-CN": "客户与合作伙伴" }, "Concentração por cliente, fornecedor e porto.": { "en-US": "Concentration by customer, supplier, and port.", "zh-CN": "按客户、供应商和港口查看集中度。" },
+  "Clientes e portos": { "en-US": "Customers and ports", "zh-CN": "客户与港口" }, "Concentração por cliente e porto.": { "en-US": "Concentration by customer and port.", "zh-CN": "按客户和港口查看集中度。" },
   "Documentos e pendências": { "en-US": "Documents and tasks", "zh-CN": "文件与待办事项" }, "Conformidade operacional por processo.": { "en-US": "Operational compliance by process.", "zh-CN": "按流程查看运营合规性。" },
   "Mercado e benchmark": { "en-US": "Market and benchmark", "zh-CN": "市场与基准" }, "Câmbio, referências oficiais e categorias acompanhadas.": { "en-US": "Exchange rates, official references, and tracked categories.", "zh-CN": "汇率、官方参考和跟踪的类别。" },
   "Recorte do relatório": { "en-US": "Report scope", "zh-CN": "报告范围" }, "Período e filtros ficam registrados na URL para compartilhar a mesma análise.": { "en-US": "The period and filters remain in the URL so this analysis can be shared.", "zh-CN": "期间和筛选条件保留在 URL 中，以便共享同一分析。" },

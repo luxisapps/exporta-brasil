@@ -20,7 +20,7 @@ function details(operation: ImportOperation, context: ReportContext) {
     calculated,
     opening: [
       ["Referência", operation.reference, "Cliente", operation.customer],
-      ["Fornecedor", operation.supplier, "Contêiner", operation.container || "—"],
+      ["Contêiner", operation.container || "—", "Responsável", operation.assigneeName || "—"],
       ["Porto de destino", operation.port, "ETA", formatDate(operation.eta)],
       ["Status", importStatusMeta[operation.status]?.label ?? operation.status, "Status portuário", portStatusMeta[operation.portStatus]?.label ?? operation.portStatus],
       ["Canal aduaneiro", customsChannelMeta[operation.customsChannel]?.label ?? operation.customsChannel, "Atualizado em", formatDate(operation.updatedAt)]
@@ -98,7 +98,7 @@ export function downloadOperationPdf(operation: ImportOperation, context: Report
   pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(19); pdf.text("Exporta Brasil", 15, 16);
   pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.text("Relatório de fechamento da importação", 15, 23); pdf.text(`Gerado em ${new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date())}`, 15, 29);
   pdf.setTextColor(26, 38, 52); pdf.setFont("helvetica", "bold"); pdf.setFontSize(16); pdf.text(operation.reference, 15, 47);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.text(`${operation.customer} · ${operation.supplier}`, 15, 53);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.text(operation.customer, 15, 53);
   autoTable(pdf, { startY: 59, body: opening, theme: "grid", styles: { fontSize: 8.5, cellPadding: 3, textColor: [30, 41, 59] }, columnStyles: { 0: { fontStyle: "bold", fillColor: [239, 246, 255] }, 2: { fontStyle: "bold", fillColor: [239, 246, 255] } }, margin: { left: 15, right: 15 } });
   const summaryTop = (pdf as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
   pdf.setTextColor(...blue); pdf.setFont("helvetica", "bold"); pdf.setFontSize(12); pdf.text("Resumo financeiro de fechamento", 15, summaryTop);

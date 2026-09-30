@@ -45,7 +45,19 @@ export type OperationDocument = { id: string; type: string; title: string; refer
 export type Customer = { id: string; legalName: string; tradeName: string; taxId: string; contactName: string; email: string; phone: string; postalCode?: string; street?: string; number?: string; complement?: string; district?: string; city?: string; state?: string; registrationStatus?: string; status: "active" | "inactive"; createdAt: string };
 export type PortFacility = { id: string; name: string; type: string; state: string; municipality: string; operationalStatus: string; management: string; waterway: string | null };
 
-export type ImportOperation = { id: string; reference: string; customerId?: string; customer: string; assigneeId?: string; assigneeName?: string; supplier: string; port: string; container: string; status: ImportStatus; portStatus: PortStatus; customsChannel: CustomsSignal; eta: string; createdAt: string; updatedAt: string; exchangeRate: number; freightBrl: number; insuranceBrl: number; portExpensesBrl: number; items: ImportItem[]; shipmentStatus?: ShipmentStatus; budgets?: ImportBudget[]; actualExpenses?: ImportExpense[]; timeline?: OperationTimelineEntry[]; tasks?: OperationTask[]; documents?: OperationDocument[] };
+export type ImportOperation = { id: string; reference: string; customerId?: string; customer: string; assigneeId?: string; assigneeName?: string; port: string; container: string; status: ImportStatus; portStatus: PortStatus; customsChannel: CustomsSignal; eta: string; createdAt: string; updatedAt: string; exchangeRate: number; freightBrl: number; insuranceBrl: number; portExpensesBrl: number; items: ImportItem[]; shipmentStatus?: ShipmentStatus; budgets?: ImportBudget[]; actualExpenses?: ImportExpense[]; timeline?: OperationTimelineEntry[]; tasks?: OperationTask[]; documents?: OperationDocument[] };
+
+/** Sequence follows the highest existing reference for the Brazilian business year. */
+export function nextImportReference(operations: Iterable<Pick<ImportOperation, "reference">>, year = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date()))) {
+  const pattern = new RegExp(`^EB-${year}-(\\d+)$`);
+  let highest = 0;
+  for (const operation of operations) {
+    const match = pattern.exec(operation.reference);
+    const sequence = match ? Number(match[1]) : 0;
+    if (Number.isSafeInteger(sequence)) highest = Math.max(highest, sequence);
+  }
+  return `EB-${year}-${String(highest + 1).padStart(3, "0")}`;
+}
 
 export const importStatusMeta: Record<ImportStatus, { label: string; tone: "neutral" | "info" | "warning" | "success" }> = { draft:{label:"Rascunho",tone:"neutral"}, quotation:{label:"Em cotação",tone:"info"}, in_transit:{label:"Em trânsito",tone:"info"}, at_port:{label:"No porto",tone:"warning"}, customs:{label:"Em desembaraço",tone:"warning"}, cleared:{label:"Liberada",tone:"success"}, completed:{label:"Concluída",tone:"success"} };
 export const portStatusMeta: Record<PortStatus, { label: string; detail: string }> = { awaiting_departure:{label:"Aguardando embarque",detail:"Documentação de origem em conferência"}, in_transit:{label:"Em trânsito marítimo",detail:"Navio a caminho do porto de destino"}, awaiting_berth:{label:"Aguardando atracação",detail:"Chegada confirmada; aguardando janela do terminal"}, unloading:{label:"Em descarga",detail:"Contêiner em movimentação no terminal"}, customs_clearance:{label:"Em desembaraço aduaneiro",detail:"Processo sob análise da alfândega"}, released:{label:"Carga liberada",detail:"Disponível para retirada programada"} };

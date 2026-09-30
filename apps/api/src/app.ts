@@ -5,7 +5,7 @@ import fastifyMultipart from "@fastify/multipart";
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { Pool } from "pg";
 import { getNcmCatalog, searchNcms, suggestNcms } from "./ncm.js";
-import { calculateImport, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
+import { calculateImport, nextImportReference, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
 await app.register(cors, { origin: true });
@@ -213,7 +213,6 @@ const seed: ImportOperation = {
   reference: "EB-2026-001",
   customerId: "customer-001",
   customer: "Aurora Comércio",
-  supplier: "Ningbo Horizon Co.",
   port: "Porto de Santos",
   container: "TGHU 812903-4",
   status: "customs",
@@ -375,7 +374,7 @@ app.get<{ Querystring: { page?: string; pageSize?: string; status?: ImportStatus
   const pageSize = Math.min(100, Math.max(1, Number(request.query.pageSize) || 20));
   const sort = request.query.sort ?? "createdAtAsc";
   const query = request.query.query?.toLocaleLowerCase("pt-BR").trim();
-  const filtered = [...imports.values()].filter((operation) => (!request.query.status || operation.status === request.query.status) && (!query || `${operation.reference} ${operation.customer} ${operation.supplier}`.toLocaleLowerCase("pt-BR").includes(query)));
+  const filtered = [...imports.values()].filter((operation) => (!request.query.status || operation.status === request.query.status) && (!query || `${operation.reference} ${operation.customer}`.toLocaleLowerCase("pt-BR").includes(query)));
   const ordered = filtered.sort((a, b) => {
     const createdDifference = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     if (sort === "createdAtDesc") return -createdDifference;
@@ -391,10 +390,10 @@ app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) =
   return { ...operation, summary: calculateImport(operation) };
 });
 
-app.post<{ Body: Pick<ImportOperation, "reference" | "customer" | "customerId" | "supplier" | "port" | "container" | "eta"> }>("/api/imports", async (request, reply) => {
+app.post<{ Body: Pick<ImportOperation, "customer" | "customerId" | "port" | "container" | "eta"> }>("/api/imports", async (request, reply) => {
   const id = `imp-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
-  const operation: ImportOperation = { id, ...request.body, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
+  const operation: ImportOperation = { id, reference: nextImportReference(imports.values()), customer: request.body.customer, customerId: request.body.customerId, port: request.body.port, container: request.body.container, eta: request.body.eta, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
   imports.set(id, operation);
   return reply.code(201).send({ ...operation, summary: calculateImport(operation) });
 });
