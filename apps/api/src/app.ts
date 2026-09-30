@@ -4,6 +4,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import fastifyMultipart from "@fastify/multipart";
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { Pool } from "pg";
+import { getNcmCatalog, searchNcms, suggestNcms } from "./ncm.js";
 import { calculateImport, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
@@ -332,6 +333,26 @@ app.get("/api/port-facilities", async (request, reply) => {
     request.log.error(error, "Não foi possível consultar o catálogo da ANTAQ");
     return reply.code(503).send({ message: "O catálogo de instalações portuárias está indisponível no momento." });
   }
+});
+
+app.get<{ Querystring: { query?: string } }>("/api/ncm", async (request, reply) => {
+  const query = String(request.query.query ?? "").trim().slice(0, 200);
+  if (query.length < 2) return { entries: [], source: "Classif / Receita Federal" };
+  try { const catalog = await getNcmCatalog(); return { entries: searchNcms(catalog.entries, query), source: "Classif / Receita Federal", updatedAt: catalog.updatedAt, fetchedAt: catalog.fetchedAt, stale: Date.now() - Date.parse(catalog.fetchedAt) >= 86_400_000 }; }
+  catch { return reply.code(503).send({ message: "Não foi possível carregar o catálogo NCM oficial. Tente novamente." }); }
+});
+const ncmAiRequests = new Map<string, number>();
+app.post<{ Body: { description?: string } }>("/api/ncm/suggestions", async (request, reply) => {
+  const user = sessionUser(request.headers.authorization);
+  if (!user) return reply.code(401).send({ message: "Sessão inválida. Entre novamente." });
+  if (!process.env.OPENAI_API_KEY) return reply.code(503).send({ message: "A sugestão por IA ainda não foi configurada. Use a busca no catálogo oficial." });
+  const description = request.body?.description;
+  if (typeof description !== "string" || description.trim().length < 15 || description.length > 4000) return reply.code(400).send({ message: "Descreva material, função e características do produto (15 a 4000 caracteres)." });
+  const last = ncmAiRequests.get(user.id) ?? 0;
+  if (Date.now() - last < 15_000) return reply.code(429).send({ message: "Aguarde alguns segundos antes de solicitar outra análise." });
+  ncmAiRequests.set(user.id, Date.now());
+  try { const catalog = await getNcmCatalog(); return { ...await suggestNcms(description, catalog.entries), source: "Classif / Receita Federal", catalogUpdatedAt: catalog.updatedAt, generatedAt: new Date().toISOString() }; }
+  catch (error) { return reply.code(503).send({ message: error instanceof Error ? error.message : "Não foi possível gerar sugestões." }); }
 });
 
 app.get("/api/customers", async () => [...customers.values()]);
