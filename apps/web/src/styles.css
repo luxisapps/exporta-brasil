@@ -78,7 +78,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation:none; background:rgba(100,116,139,.25); } }
 @media (max-width: 767px) { .skeleton--headline { display:none; }.skeleton--quote { width:104px; height:24px; } }
 .export-error { margin:0; color:#fecaca; font-size:12px; line-height:1.4; }
-.operation-header { grid-template-columns:minmax(0,1fr) auto auto; }.operation-assignee { display:grid; align-content:start; gap:5px; min-width:210px; color:#8492a6; font-size:11px; }.operation-assignee select { width:100%; }.operation-assignee small { color:#7d8ba0; font-size:10px; line-height:1.35; }.operation-assignee .skeleton--input { height:34px; }.timeline-author { display:block; margin-top:7px; color:#718197; font:500 10px "IBM Plex Mono",ui-monospace,monospace; }
+.operation-header { grid-template-columns:minmax(0,1fr) auto auto; }.operation-assignee { display:grid; align-content:start; gap:5px; min-width:210px; color:#8492a6; font-size:11px; }.operation-assignee select { width:100%; }.operation-assignee small { color:#7d8ba0; font-size:10px; line-height:1.35; }.operation-assignee .skeleton--input { height:44px; }.timeline-author { display:block; margin-top:7px; color:#718197; font:500 10px "IBM Plex Mono",ui-monospace,monospace; }
 @media (max-width: 767px) { .operation-assignee { min-width:0; }.operation-header { grid-template-columns:1fr; } }
 
 /* Notícias: fontes oficiais de comércio exterior, navegação e regulação. */
@@ -105,19 +105,28 @@ h1, h2, p { margin: 0; } small { display: block; }
 @media (max-width: 960px) { .news-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .news-card:nth-child(3n) { border-right:1px solid rgba(148,163,184,.1); } .news-card:nth-child(2n) { border-right:0; } .news-card:nth-child(n+3) { border-top:1px solid rgba(148,163,184,.1); } }
 @media (max-width: 767px) { .latest-news .panel-header { align-items:flex-start; } .news-updated { margin-top:3px; } .news-grid { grid-template-columns:1fr; } .news-card,.news-card:nth-child(3n) { min-height:134px; border-right:0; } .news-card + .news-card { border-top:1px solid rgba(148,163,184,.1); } .news-grid--loading article { min-height:132px; border-right:0; } .news-grid--loading article + article { border-top:1px solid rgba(148,163,184,.1); } }
 
-.shadcn-select-trigger { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:0; background:transparent; }
-.shadcn-select-content { z-index:50; overflow:hidden; border:1px solid rgba(148,163,184,.18); border-radius:10px; background:rgba(10,15,22,.98); box-shadow:0 14px 32px rgba(0,0,0,.38); backdrop-filter:blur(18px); }
-.shadcn-select-viewport { padding:4px; }
-.shadcn-select-item { position:relative; display:flex; align-items:center; min-width:35px; height:31px; padding:0 22px 0 6px; border-radius:7px; outline:0; cursor:pointer; }
+.shadcn-select-trigger { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-width:0; height:44px; min-height:44px; padding:0 12px; border:1px solid rgba(148,163,184,.23); border-radius:8px; color:#dce8f6; background:rgba(5,7,10,.7); font-size:12px; text-align:left; transition:border-color .18s ease,background .18s ease; }
+.shadcn-select-trigger > span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.shadcn-select-chevron { flex-shrink:0; color:#9aafc8; }
+.shadcn-select-trigger:hover { border-color:rgba(147,197,253,.43); background:rgba(17,25,36,.8); }
+.shadcn-select-trigger:focus-visible { outline:3px solid rgba(147,197,253,.72); outline-offset:2px; }
+.shadcn-select-trigger:disabled { cursor:not-allowed; opacity:.5; }
+.operation-filters .shadcn-select-trigger { width:auto; max-width:220px; }
+.operation-status label { min-width:160px; }
+.customers-sort .shadcn-select-trigger { min-width:145px; }
+@media (max-width:767px) { .operation-filters .shadcn-select-trigger { max-width:none; } .operation-header .operation-status { align-items:stretch; } .operation-header .operation-status label { width:100%; min-width:0; } }
+.shadcn-select-content { min-width:var(--radix-select-trigger-width); max-width:calc(100vw - 24px); z-index:50; overflow:hidden; border:1px solid rgba(148,163,184,.18); border-radius:10px; background:rgba(10,15,22,.98); box-shadow:0 14px 32px rgba(0,0,0,.38); backdrop-filter:blur(18px); }
+.shadcn-select-viewport { padding:4px; max-height:min(360px,var(--radix-select-content-available-height)); overflow-y:auto; }
+.shadcn-select-item { position:relative; display:flex; align-items:center; min-width:35px; min-height:44px; padding:8px 30px 8px 10px; font-size:12px; border-radius:7px; outline:0; cursor:pointer; }
 .shadcn-select-item[data-highlighted],.shadcn-select-item[data-state="checked"] { background:rgba(37,99,235,.16); }
 .shadcn-select-indicator { position:absolute; right:5px; display:grid; place-items:center; color:#9bc8ff; }
-.language-select { width:37px; height:37px; padding:0; border:1px solid rgba(148,163,184,.15); border-radius:10px; background:rgba(17,25,36,.55); }
+.language-select { justify-content:center; width:37px; height:37px; min-height:37px; padding:0; border:1px solid rgba(148,163,184,.15); border-radius:10px; background:rgba(17,25,36,.55); }
 .language-select:hover,.language-select:focus-visible { border-color:rgba(147,197,253,.55); }
 .language-select:focus-visible { outline:3px solid #93c5fd; outline-offset:2px; }
 .language-select .shadcn-select-chevron { display:none; }
 .language-flag { display:block; width:21px; height:15px; overflow:hidden; border-radius:2px; box-shadow:0 1px 3px rgba(0,0,0,.35); }
 .language-menu { min-width:43px; }
-.language-menu .shadcn-select-item { justify-content:center; width:35px; padding:0; }
+.language-menu .shadcn-select-item { justify-content:center; width:35px; min-height:35px; padding:0; }
 
 .shadcn-toggle { display:inline-flex; align-items:center; justify-content:center; padding:0; border:0; color:inherit; background:transparent; }
 .login-input--password { gap:8px; }
@@ -149,7 +158,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 .avatar-editor__actions { display:flex; justify-content:flex-end; gap:10px; padding-top:2px; }
 @media (max-width:639px) { .avatar-editor-dialog { width:calc(100% - 20px); }.avatar-editor { gap:14px; padding:16px; }.avatar-editor__stage { min-height:280px; }.avatar-editor__control { grid-template-columns:32px minmax(0,1fr) auto; }.avatar-editor__control>span { grid-column:1/-1; }.avatar-editor__actions .button { flex:1; }.avatar-editor__reset { min-width:66px; } }
 
-.operation-assignee__select { width:100%; min-height:42px; justify-content:space-between; padding:0 10px; border:1px solid rgba(148,163,184,.23); border-radius:10px; color:#dce8f6; background:rgba(5,7,10,.7); transition:border-color .18s ease,background .18s ease; }
+.operation-assignee__select { width:100%; }
 .operation-assignee__select:hover { border-color:rgba(147,197,253,.43); background:rgba(17,25,36,.8); }
 .operation-assignee__select:focus-visible { outline:3px solid rgba(147,197,253,.72); outline-offset:2px; }
 .operation-assignee__select .shadcn-select-chevron { color:#9aafc8; }
@@ -159,7 +168,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 .assignee-option--empty { color:#9dacbf; font-weight:500; }
 .assignee-option--empty svg { width:26px; height:26px; padding:6px; border:1px solid rgba(148,163,184,.2); border-radius:50%; color:#8fa3bb; background:rgba(71,85,105,.13); }
 .operation-assignee__select .assignee-option { font-size:12px; font-weight:600; }
-.operation-assignee__content .shadcn-select-item { min-height:42px; padding:0 10px; border-radius:8px; color:#bdc9d8; font-size:13px; transition:background .15s ease,color .15s ease; }
+.operation-assignee__content .shadcn-select-item { min-height:44px; padding:0 10px; border-radius:8px; color:#bdc9d8; font-size:13px; transition:background .15s ease,color .15s ease; }
 .operation-assignee__content .shadcn-select-item[data-highlighted] { color:#f2f7ff; background:rgba(59,130,246,.13); }
 .operation-assignee__content .shadcn-select-item[data-state="checked"] { color:#eef6ff; background:rgba(37,99,235,.11); box-shadow:inset 0 0 0 1px rgba(96,165,250,.22); }
 
@@ -199,7 +208,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 .reports-filters>div:first-child { display:grid; gap:4px; padding-bottom:5px; }
 .reports-filters>div:first-child strong { color:#e5eef9; font-size:13px; }
 .reports-filters>div:first-child small { color:#94a8bd; font-size:11px; line-height:1.4; }
-.report-select .shadcn-select-trigger { display:flex; width:100%; min-height:40px; justify-content:space-between; padding:0 10px; border:1px solid rgba(148,163,184,.25); border-radius:8px; color:#dce9f8; background:rgba(5,8,13,.61); }
+.report-select .shadcn-select-trigger { width:100%; }
 .report-select .shadcn-select-trigger:focus-visible { outline:3px solid rgba(147,197,253,.7); outline-offset:2px; }
 .reports-filters__reset { align-self:end; min-height:40px; white-space:nowrap; }
 .report-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
@@ -247,7 +256,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 .expense-list__header { color:#7f90a5; background:rgba(14,23,35,.66); font:500 10px "IBM Plex Mono",ui-monospace,monospace; letter-spacing:.04em; }
 .expense-row { border-top:1px solid rgba(148,163,184,.1); }
 .expense-row>input { width:100%; min-height:36px; padding:0 9px; color:#e6edf7; border:1px solid rgba(148,163,184,.2); border-radius:7px; background:rgba(5,7,10,.72); font-size:12px; }
-.expense-row .shadcn-select-trigger { width:100%; min-height:36px; padding:0 8px; font-size:11px; }
+.expense-row .shadcn-select-trigger { width:100%; }
 .expense-row .number-input { min-height:36px; }.expense-row .number-input input { min-height:34px; font-size:12px; }
 .expense-list__add { margin:12px; }
 .expense-list__empty { padding:19px; color:#8c9aaf; font-size:12px; }
@@ -264,7 +273,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 .ncm-search-input { display: flex; align-items: center; gap: 8px; }
 .ncm-search-input input { min-width: 0; width: 100%; }
 .ncm-field .shadcn-select-trigger { width: 100%; min-width: 0; }
-.ncm-field > .shadcn-select-trigger { display: flex; justify-content: space-between; gap: 8px; padding: 12px; border: 1px solid #354155; border-radius: 8px; background: #0a1019; color: #edf2fa; text-align: left; }
+.ncm-field > .shadcn-select-trigger { width:100%; }
 .ncm-selected-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ncm-option { display: grid; gap: 4px; max-width: min(65ch, 75vw); white-space: normal; }
 .ncm-option span { font-size: 12px; line-height: 1.5; }
