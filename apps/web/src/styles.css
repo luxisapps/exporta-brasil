@@ -347,3 +347,11 @@ h1, h2, p { margin: 0; } small { display: block; }
 .operation-container__form { display:grid; gap:12px; }
 .operation-container__form input { min-height:44px; }
 .operation-container__actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+.shadcn-textarea { display:block; width:100%; min-width:0; padding:10px 12px; border:1px solid rgba(148,163,184,.2); border-radius:8px; background:rgba(5,7,10,.72); color:#e6edf7; font:inherit; line-height:1.5; }
+.shadcn-textarea::placeholder { color:#5f6d80; }
+.shadcn-textarea:focus-visible { outline:3px solid #93c5fd; outline-offset:2px; }
+.shadcn-textarea:disabled { opacity:.5; cursor:not-allowed; }
+.shadcn-textarea[aria-invalid="true"] { border-color:#f87171; }
+.item-description { height:calc(4.5em + 22px); min-height:calc(4.5em + 22px); max-height:calc(4.5em + 22px); resize:none; overflow-y:auto; }
+@media (max-width:767px) { .shadcn-textarea { font-size:16px; } }
