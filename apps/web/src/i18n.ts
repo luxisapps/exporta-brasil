@@ -274,6 +274,7 @@ Object.assign(uiText, {
   },
   "Ex.: Conferir invoice antes do registro": { "en-US": "E.g.: Check invoice before registration", "zh-CN": "例如：登记前核对发票" },
   "Editar pendência": { "en-US": "Edit task", "zh-CN": "编辑待办" },
+  "Todas as fases": { "en-US": "All phases", "zh-CN": "所有阶段" },
   "Fase": { "en-US": "Phase", "zh-CN": "阶段" },
   "Disponível após aprovação dos custos.": { "en-US": "Available after cost approval.", "zh-CN": "批准成本后可用。" },
   "Custos": { "en-US": "Costs", "zh-CN": "成本" },

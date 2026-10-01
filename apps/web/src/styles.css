@@ -432,3 +432,20 @@ h1, h2, p { margin: 0; } small { display: block; }
 .my-tasks-empty { display: flex; align-items: center; gap: 12px; padding: 22px 20px 28px; color: #a5b3c5; font-size: 13px; line-height: 1.6; }.my-tasks-empty svg { color: #9db5cd; flex-shrink: 0; }
 .my-tasks-pagination { padding: 12px 16px; border-top: 1px solid #ffffff0d; }.my-tasks-pagination .timeline-pagination__controls { justify-content: space-between; }.my-tasks-pagination .button { min-height: 36px; font-size: 11px; padding: 6px 10px; }
 @media (max-width: 767px) { .dashboard-my-tasks { order: -1; }.my-tasks-list { padding: 0 16px 4px; } }
+.money-amount { display: inline-flex; flex-direction: column; gap: 3px; max-width: 100%; font-variant-numeric: tabular-nums; }
+.currency-equivalents { display: block !important; margin: 3px 0 0 !important; color: var(--text-muted, #94a3b8) !important; font-size: 11px !important; font-weight: 400 !important; line-height: 1.5 !important; letter-spacing: 0 !important; text-transform: none !important; white-space: normal; }
+.currency-equivalents__loading { display: inline-block; width: 145px; height: 12px; }
+.currency-number-field { min-width: 0; width: 100%; }
+.report-chart .money-amount { align-items: flex-end; text-align: right; }
+@media (max-width: 640px) { .currency-equivalents { font-size: 10px !important; } }
+.report-phase-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.report-phase-summary > span { padding: 16px 20px; border: 1px solid var(--border, #263140); border-radius: 12px; font-size: 12px; color: var(--text-muted, #94a3b8); }
+.report-phase-summary .money-amount { display: flex; margin-top: 8px; }
+.report-phase-summary .money-amount__primary { color: var(--text, #f1f5f9); font-size: 19px; font-weight: 600; }
+@media (max-width: 640px) { .report-phase-summary { grid-template-columns: 1fr; gap: 8px; } }
+.reports-filters { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; }
+.reports-filters > div:first-child { grid-column: 1 / -1; }
+.reports-filters__reset { grid-column: 1 / -1; justify-self: end; }
+@media (max-width: 1100px) { .reports-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .reports-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 400px) { .reports-filters { grid-template-columns: 1fr; } }

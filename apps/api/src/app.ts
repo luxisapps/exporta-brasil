@@ -1,3 +1,4 @@
+import { getPtaxQuote, getPtaxYuan } from "./ptax.js";
 import { translationCacheSchema, translateProductNames } from "./product-translation.js";
 import cors from "@fastify/cors";
 import { allocateImportReference } from "./import-reference.js";
@@ -68,6 +69,7 @@ type MarketNewsSource = "Siscomex" | "ANTAQ" | "MDIC";
 type MarketNews = { title: string; url: string; publishedAt?: string; source: MarketNewsSource };
 type MarketContext = {
   dollar: { buy: number; sell: number; quotedAt: string; source: "BCB PTAX" };
+  yuan: Awaited<ReturnType<typeof getPtaxQuote>> | null;
   news: MarketNews[];
   updatedAt: string;
 };
@@ -137,20 +139,6 @@ function companyFromReceita(payload: Record<string, unknown>) {
   };
 }
 
-async function getPtaxDollar() {
-  for (let daysAgo = 0; daysAgo < 10; daysAgo += 1) {
-    const date = new Date(); date.setUTCDate(date.getUTCDate() - daysAgo);
-    const value = `${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}-${date.getUTCFullYear()}`;
-    const params = new URLSearchParams({ "@moeda": "'USD'", "@dataCotacao": `'${value}'`, "$top": "1", "$format": "json" });
-    const response = await fetch(`https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?${params}`);
-    if (!response.ok) continue;
-    const payload = await response.json() as { value?: Array<{ cotacaoCompra: number; cotacaoVenda: number; dataHoraCotacao: string }> };
-    const quote = payload.value?.at(-1);
-    if (quote) return { buy: quote.cotacaoCompra, sell: quote.cotacaoVenda, quotedAt: quote.dataHoraCotacao, source: "BCB PTAX" as const };
-  }
-  throw new Error("A PTAX não retornou uma cotação recente.");
-}
-
 const decodeXml = (value: string) => value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#8211;/g, "–").replace(/&#8217;/g, "’").trim();
 const rssNewsSources: Array<{ source: MarketNewsSource; url: string; relevance: RegExp }> = [
   { source: "MDIC", url: "https://www.gov.br/mdic/pt-br/assuntos/noticias/rss.xml", relevance: /comércio exterior|importa|exporta|tarifa|mercosul|acordo comercial|comex/i }
@@ -201,8 +189,9 @@ async function getMarketNews() {
 }
 async function getMarketContext() {
   if (marketContextCache && marketContextCache.expiresAt > Date.now()) return marketContextCache.data;
-  const [dollar, news] = await Promise.all([getPtaxDollar(), getMarketNews()]);
-  const data: MarketContext = { dollar, news, updatedAt: new Date().toISOString() };
+  const [dollar, news] = await Promise.all([getPtaxQuote("USD"), getMarketNews()]);
+  const yuan = await getPtaxYuan(dollar.quotedAt).catch(() => null);
+  const data: MarketContext = { dollar, yuan, news, updatedAt: new Date().toISOString() };
   marketContextCache = { data, expiresAt: Date.now() + marketContextCacheTtlMs };
   return data;
 }

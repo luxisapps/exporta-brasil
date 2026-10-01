@@ -86,3 +86,17 @@ As duas exportações devem ser geradas a partir do mesmo retrato da operação,
 3. Implementar a tela de relatório final no detalhe da operação.
 4. Gerar XLSX e PDF a partir do mesmo modelo de relatório.
 5. Validar os totais contra uma operação oficial conhecida antes de liberar o uso operacional.
+
+## Exportações e equivalências monetárias — atualização 01/10/2026
+
+- Todos os valores monetários exibem CNY e USD abaixo do principal, em tamanho menor. Quantidades, pesos, volumes e percentuais mantêm suas unidades.
+- O câmbio do orçamento ativo continua controlando FOB e despesas em USD. As equivalências indicativas usam o fechamento PTAX de venda do Banco Central, com cache de 15 minutos.
+- USD vem do OData PTAX. CNY vem do CSV oficial de fechamento de todas as moedas, na mesma data do dólar; CNY não está no catálogo de dez moedas do OData.
+- Se uma cotação falhar, o sistema informa a indisponibilidade daquela equivalência. Não usa cotação estimada ou inventada. A exportação aguarda a primeira tentativa de carregamento e registra a falta de cotação, se houver.
+- O PDF coloca o resumo financeiro na primeira página. O Excel começa pela aba de resumo com o total destacado. Ambos preservam os nomes chineses.
+- O detalhamento inclui produtos e preços, nomes originais e descrições, SKU/NCM, dimensões e embalagens, dados pendentes, rateios, II/IPI/PIS/COFINS, despesas estimadas e realizadas, alíquotas efetivas/origens, versões e aprovação, responsáveis, documentos, pendências e linha do tempo com autor/data/hora.
+- Os arquivos exportam todos os registros, independentemente da paginação da tela. Os relatórios de carteira respeitam o período e os filtros, incluindo a fase Custos/Aprovado, e exportam as seções do modelo escolhido.
+- As despesas realizadas são os lançamentos registrados, não um custo final completo. As alíquotas adicionais que ainda não fazem parte do calculador são identificadas como premissas, sem valores tributários inferidos.
+- O Excel mantém valores numéricos. As equivalências usam fórmulas com resultados em cache e referências às cotações na aba de metodologia. O PDF incorpora Noto Sans SC (SIL OFL) para português e chinês. Bibliotecas de exportação e a fonte são carregadas sob demanda.
+
+Fontes: [BCB PTAX OData](https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/documentacao) e [BCB — todas as moedas](https://ptax.bcb.gov.br/ptax_internet/consultarTodasAsMoedas.do?method=consultaTodasMoedas).

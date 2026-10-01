@@ -1,119 +1,57 @@
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "@e965/xlsx";
-import { calculateImport, effectiveOperationStatus, hasApprovedBudget, customsChannelMeta, importStatusMeta, portStatusMeta, type ImportOperation, type OperationDocument, type OperationTask, type OperationTimelineEntry } from "@exporta/domain";
-
-type ReportContext = { timeline: OperationTimelineEntry[]; tasks: OperationTask[]; documents: OperationDocument[] };
-const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const date = new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" });
-const safeDate = (value?: string) => {
-  const parsed = value ? new Date(value) : new Date();
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
-};
-const formatDate = (value?: string) => value ? date.format(safeDate(value)) : "—";
-const statusDocument = (value: OperationDocument["status"]) => value === "available" ? "Disponível" : value === "expired" ? "Vencido" : "Pendente";
-const filename = (reference: string, extension: string) => `fechamento-${reference.toLowerCase().replace(/[^a-z0-9]+/gi, "-").replace(/(^-|-$)/g, "") || "operacao"}.${extension}`;
-
-function details(operation: ImportOperation, context: ReportContext) {
-  const calculated = calculateImport(operation);
-  return {
-    calculated,
-    opening: [
-      ["Referência", operation.reference, "Cliente", operation.customer],
-      ["Contêiner", operation.container || "—", "Responsável", operation.assigneeName || "—"],
-      ["Porto de destino", operation.port || "Porto a definir", "ETA", formatDate(operation.eta)],
-      ["Fase", hasApprovedBudget(operation) ? "Aprovado" : "Custos", "Status", importStatusMeta[effectiveOperationStatus(operation)].label],
-      ["Status portuário", portStatusMeta[operation.portStatus]?.label ?? operation.portStatus, "", ""],
-      ["Canal aduaneiro", customsChannelMeta[operation.customsChannel]?.label ?? operation.customsChannel, "Atualizado em", formatDate(operation.updatedAt)]
-    ],
-    summary: [
-      ["Câmbio", `R$ ${operation.exchangeRate.toFixed(4)}`],
-      ["FOB convertido", money.format(calculated.fobBrl)],
-      ["Frete internacional", money.format(operation.freightBrl)],
-      ["Seguro", money.format(operation.insuranceBrl)],
-      ["Despesas portuárias", money.format(operation.portExpensesBrl)],
-      ["Custos logísticos rateados", money.format(calculated.baseExpenses)],
-      ["Imposto de importação (II)", money.format(calculated.items.reduce((sum, item) => sum + item.ii, 0))],
-      ["IPI", money.format(calculated.items.reduce((sum, item) => sum + item.ipi, 0))],
-      ["Total de tributos", money.format(calculated.taxes)],
-      ["Custo total projetado", money.format(calculated.totalCost)],
-      ["Peso bruto estimado", `${calculated.totalWeight.toLocaleString("pt-BR")} kg`]
-    ]
-  };
+import { activeBudget, calculateActualExpenses, calculateImport, effectiveOperationStatus, hasApprovedBudget, customsChannelMeta, importStatusMeta, portStatusMeta, shipmentStatusMeta, taxRateLabels, type ImportOperation, type OperationDocument, type OperationTask, type OperationTimelineEntry, type ImportExpense } from "@exporta/domain";
+import { missingProductFields } from "./product-completeness";
+import { createReportPdf, createReportWorkbook, downloadWorkbook, reportDate, type ReportData, type ReportSheet } from "./report-format";
+import type { ExchangeRates } from "./currency";
+export type ReportContext = { timeline: OperationTimelineEntry[]; tasks: OperationTask[]; documents: OperationDocument[]; rates?: ExchangeRates | null; users?: { id: string; name: string }[] };
+const expenseStatus = { estimated: "Estimada", approved: "Aprovada", contracted: "Contratada", invoiced: "Faturada", paid: "Paga" };
+const allocation = { fob: "FOB", weight: "Peso", volume: "Volume", quantity: "Quantidade", fixed: "Igual por item" };
+const sourceLabel = { default: "Parametrização", ncm: "NCM", siscomex: "Siscomex", manual: "Manual" };
+const filename = (reference: string, extension: string) => `relatorio-${reference.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.${extension}`;
+export function operationReportData(operation: ImportOperation, context: ReportContext): ReportData {
+  const calculated = calculateImport(operation), budget = activeBudget(operation), actual = calculateActualExpenses(operation);
+  const name = (id?: string, fallback?: string) => context.users?.find((user) => user.id === id)?.name || fallback || "—";
+  const moneyColumns = (indexes: number[]) => Object.fromEntries(indexes.map((index) => [index, "BRL" as const]));
+  const expenseSheet = (title: string, expenses: ImportExpense[]): ReportSheet => ({ name: title, headers: ["Despesa / categoria", "Valor original", "Valor BRL", "Rateio / situação", "Fornecedor / documento", "Prazo / pagamento", "Observações"], moneyColumns: { 2: "BRL" }, rowMoneyColumns: expenses.map((expense) => ({ 1: expense.currency, 2: "BRL" })), widths: [35, 22, 22, 28, 35, 26, 45], rows: expenses.map((expense) => [`${expense.label} · ${expense.category}`, expense.amount, expense.currency === "USD" ? expense.amount * (expense.exchangeRate || calculated.exchangeRate) : expense.amount, `${allocation[expense.allocationMethod]} · ${expenseStatus[expense.status]}`, `${expense.vendor || "—"} / ${expense.document || "—"}`, `${reportDate(expense.dueDate)} / ${reportDate(expense.paidAt)}`, expense.notes || "—"]) });
+  const estimated = budget?.expenses ?? [
+    { id: "freight", label: "Frete internacional", category: "Frete", amount: operation.freightBrl, currency: "BRL", allocationMethod: "fob", status: "estimated" },
+    { id: "insurance", label: "Seguro", category: "Seguro", amount: operation.insuranceBrl, currency: "BRL", allocationMethod: "fob", status: "estimated" },
+    { id: "port", label: "Despesas portuárias", category: "Porto", amount: operation.portExpensesBrl, currency: "BRL", allocationMethod: "fob", status: "estimated" }
+  ] as ImportExpense[];
+  const taxes = (key: "ii" | "ipi" | "pis" | "cofins") => calculated.items.reduce((sum, item) => sum + item[key], 0);
+  const sheets: ReportSheet[] = [
+    { name: "Produtos", headers: ["Produto em português", "Original chinês", "Nome em inglês", "SKU / NCM", "Descrição de comércio exterior", "Quantidade", "Preço unitário USD", "Dados pendentes"], moneyColumns: { 6: "USD" }, widths: [35, 35, 32, 22, 55, 15, 24, 35], rows: operation.items.map((item) => [item.name, item.chineseName || "", item.englishName || "", `${item.sku || "—"} / ${item.ncm || "—"}`, item.description || "", item.quantity, item.unitPriceUsd, missingProductFields(item, estimated).join(", ") || "Completo"]) },
+    { name: "Itens e custos", headers: ["Produto / NCM", "FOB BRL", "Despesas rateadas", "Tributos", "Custo total", "Custo unitário"], moneyColumns: moneyColumns([1, 2, 3, 4, 5]), rows: calculated.items.map((item) => [`${item.name || item.chineseName || "Produto"} / ${item.ncm}`, item.itemFob, item.allocatedExpenses, item.taxes, item.totalCost, item.unitCost]) },
+    { name: "Tributos calculados", headers: ["Produto / NCM", "II", "IPI", "PIS-importação", "COFINS-importação", "Total de tributos"], moneyColumns: moneyColumns([1, 2, 3, 4, 5]), rows: calculated.items.map((item) => [`${item.name || item.chineseName || "Produto"} / ${item.ncm}`, item.ii, item.ipi, item.pis, item.cofins, item.taxes]) },
+    { name: "Volumes e embalagens", headers: ["Produto", "Compr. / larg. / alt. cm", "Unid. por caixa", "Caixas", "Peso por caixa kg", "Peso total kg", "Volume total m³"], rows: operation.items.map((item) => [item.name || item.chineseName || "—", `${item.lengthCm ?? "—"} / ${item.widthCm ?? "—"} / ${item.heightCm ?? "—"}`, item.unitsPerBox ?? null, item.boxCount ?? null, item.boxWeightKg ?? null, item.boxWeightKg && item.boxCount ? item.boxWeightKg * item.boxCount : item.grossWeightKg * item.quantity, item.totalVolumeM3 ?? ((item.lengthCm || 0) * (item.widthCm || 0) * (item.heightCm || 0) * (item.boxCount || 0) / 1000000)]) },
+    expenseSheet("Despesas estimadas", estimated), expenseSheet("Despesas realizadas", operation.actualExpenses ?? []),
+    { name: "Premissas e alíquotas", headers: ["Escopo", "Tributo", "Alíquota %", "Origem", "Alterada manualmente", "Consultada / atualizada em", "Uso no cálculo"], rows: [
+      ...(budget?.taxRates ?? []).map((tax) => ["Orçamento ativo", taxRateLabels[tax.code], tax.rate, sourceLabel[tax.source], tax.overridden ? "Sim" : "Não", reportDate(tax.updatedAt, true), ["ii", "ipi", "pis_import", "cofins_import"].includes(tax.code) ? "Aplicada conforme regra do item" : "Premissa; não compõe o total atual"]),
+      ...operation.items.flatMap((item) => {
+        const codes = [...new Set(["ii", "ipi", "pis_import", "cofins_import", ...(item.taxRates ?? []).map((tax) => tax.code)])] as (keyof typeof taxRateLabels)[];
+        return codes.map((code) => {
+          const itemRate = item.taxRates?.find((tax) => tax.code === code);
+          const legacy = code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0;
+          const budgetRate = budget?.taxRates.find((tax) => tax.code === code);
+          const selected = itemRate ?? (legacy > 0 ? undefined : budgetRate);
+          const value = itemRate?.rate ?? (legacy > 0 ? legacy : budgetRate?.rate ?? legacy);
+          return [item.name || item.chineseName || item.id, taxRateLabels[code], value, selected ? sourceLabel[selected.source] : legacy > 0 ? "Legado; origem não registrada" : "Não informada", selected?.overridden ? "Sim" : "Não", reportDate(selected?.updatedAt, true), ["ii", "ipi", "pis_import", "cofins_import"].includes(code) ? "Alíquota efetiva aplicada no item" : "Premissa; não compõe o total atual"];
+        });
+      })
+    ] },
+    { name: "Versões de custos", headers: ["Versão", "Nome", "Situação", "Câmbio BRL por USD", "Margem %", "Criada em", "Aprovação / responsável", "Observações"], rows: (operation.budgets ?? []).map((version) => [version.number, version.name, version.status === "approved" ? "Aprovada" : version.status === "superseded" ? "Substituída" : "Rascunho", version.exchangeRate, version.marginRate, reportDate(version.createdAt, true), `${reportDate(version.approvedAt, true)} · ${name(version.approvedBy, version.approvedBy)}`, version.notes || "—"]) },
+    { name: "Pendências", headers: ["Pendência", "Responsável", "Prazo", "Situação", "Criada em"], rows: context.tasks.map((task) => [task.title, name(task.assigneeId, task.assignee), reportDate(task.dueDate), task.completed ? "Concluída" : "Aberta", reportDate(task.createdAt, true)]) },
+    { name: "Documentos", headers: ["Tipo / título", "Referência", "Emissão", "Validade", "Situação", "Registrado em"], rows: context.documents.map((document) => [`${document.type} · ${document.title}`, document.reference || "—", reportDate(document.issuedAt), reportDate(document.expiresAt), document.status === "expired" || (document.expiresAt && document.expiresAt < new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())) ? "Vencido" : document.status === "available" ? "Disponível" : "Pendente", reportDate(document.createdAt, true)]) },
+    { name: "Linha do tempo", headers: ["Marco", "Descrição", "Ocorreu em", "Registrado por", "Registrado em", "Tipo"], rows: [...context.timeline].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)).map((entry) => [entry.title, entry.description || "—", reportDate(entry.occurredAt, true), name(entry.actorId, entry.actorName), reportDate(entry.recordedAt ?? entry.occurredAt, true), entry.type === "status" ? "Status" : entry.type === "milestone" ? "Marco" : "Nota"]) }
+  ];
+  return { title: `${hasApprovedBudget(operation) ? "Custos aprovados" : "Orçamento de importação"} · ${operation.reference}`, rates: context.rates ?? null, metadata: [["Referência / cliente", `${operation.reference} · ${operation.customer}`], ["Fase / status", `${hasApprovedBudget(operation) ? "Aprovado" : "Custos"} · ${importStatusMeta[effectiveOperationStatus(operation)].label}`], ["Responsável / destino", `${name(operation.assigneeId, operation.assigneeName)} · ${operation.port || "Porto a definir"}`], ["Embarque / porto", `${shipmentStatusMeta[operation.shipmentStatus ?? "not_shipped"].label} · ${portStatusMeta[operation.portStatus].label}`], ["Contêiner / ETA / canal", `${operation.container || "—"} · ${reportDate(operation.eta)} · ${operation.customsChannel === "unassigned" ? "—" : customsChannelMeta[operation.customsChannel].label}`], ["Câmbio / margem do orçamento", `${calculated.exchangeRate.toFixed(4)} BRL/USD · ${budget?.marginRate ?? 0}%`], ["Aprovação / atualização", `${reportDate(budget?.approvedAt, true)} · ${name(budget?.approvedBy, budget?.approvedBy)} / ${reportDate(operation.updatedAt, true)}`]], summary: [
+      { label: "FOB convertido", value: calculated.fobBrl, currency: "BRL" }, { label: "Despesas estimadas", value: calculated.baseExpenses, currency: "BRL" },
+      ...(["ii", "ipi", "pis", "cofins"] as const).map((key) => ({ label: { ii: "II", ipi: "IPI", pis: "PIS-importação", cofins: "COFINS-importação" }[key], value: taxes(key), currency: "BRL" as const })),
+      { label: "Total de tributos", value: calculated.taxes, currency: "BRL" }, { label: "CUSTO TOTAL PROJETADO", value: calculated.totalCost, currency: "BRL" },
+      ...(calculated.suggestedSaleTotal === null ? [] : [{ label: "Venda sugerida pela margem", value: calculated.suggestedSaleTotal, currency: "BRL" as const }]), { label: "Despesas realizadas registradas", value: actual, currency: "BRL" }, { label: "Variação das despesas (realizado − estimado)", value: actual - calculated.baseExpenses, currency: "BRL" },
+      { label: "Peso bruto / volume", value: calculated.totalWeight, unit: `kg · ${calculated.totalVolume} m³` }
+    ], sheets, notes: ["FOB, rateios e tributos seguem o orçamento ativo. II, IPI, PIS e COFINS compõem os tributos calculados; as demais alíquotas são apresentadas como premissas, sem inferir valores não calculados pelo sistema.", "Venda sugerida = custo total / (1 − margem). Não representa receita realizada. Margem inválida impede cálculo.", "Despesas realizadas são lançamentos registrados, não o custo final completo da importação. A variação compara essas despesas com as despesas estimadas.", "As equivalências usam a mesma fotografia de cotações durante a exportação. Os valores são arredondados para exibição; o Excel mantém células numéricas e fórmulas de conversão.", "O relatório inclui todos os produtos, pendências, documentos e marcos, independentemente da paginação da tela."] };
 }
-
-function styleSheet(sheet: XLSX.WorkSheet, title: string, lastColumn: string, widths: number[]) {
-  sheet["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: widths.length - 1 } }];
-  sheet["A1"] = { t: "s", v: title, s: { font: { bold: true, color: { rgb: "FFFFFF" }, sz: 15 }, fill: { fgColor: { rgb: "0D1B2A" } }, alignment: { vertical: "center" } } };
-  sheet["!rows"] = [{ hpt: 28 }];
-  sheet["!cols"] = widths.map((wch) => ({ wch }));
-  const range = XLSX.utils.decode_range(sheet["!ref"] ?? `A1:${lastColumn}1`);
-  for (let column = range.s.c; column <= range.e.c; column += 1) {
-    const cell = sheet[XLSX.utils.encode_cell({ r: 1, c: column })];
-    if (cell) cell.s = { font: { bold: true, color: { rgb: "DCEBFA" } }, fill: { fgColor: { rgb: "173451" } }, alignment: { vertical: "center", wrapText: true } };
-  }
-}
-
-export function createOperationWorkbook(operation: ImportOperation, context: ReportContext) {
-  const { calculated, opening, summary } = details(operation, context);
-  const workbook = XLSX.utils.book_new();
-  const summarySheet = XLSX.utils.aoa_to_sheet([[`Exporta Brasil · Fechamento da operação ${operation.reference}`], [], ["DADOS DA OPERAÇÃO", "", "", ""], ...opening, [], ["RESUMO FINANCEIRO", ""], ["Componente", "Valor"], ...summary]);
-  styleSheet(summarySheet, `Exporta Brasil · Fechamento da operação ${operation.reference}`, "D", [29, 25, 26, 25]);
-  summarySheet["A3"].s = { font: { bold: true, color: { rgb: "1D4ED8" } } };
-  summarySheet["A10"].s = { font: { bold: true, color: { rgb: "1D4ED8" } } };
-  summarySheet["A21"].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1D4ED8" } } };
-  summarySheet["B21"].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1D4ED8" } } };
-  XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumo de fechamento");
-
-  const itemsSheet = XLSX.utils.aoa_to_sheet([[`Exporta Brasil · Detalhes por item · ${operation.reference}`], [], ["Produto", "NCM", "Quantidade", "Peso bruto (kg)", "Valor unit. USD", "FOB convertido", "Rateio", "II", "IPI", "Tributos", "Custo total", "Custo unitário", "Nome em chinês (original)"], ...calculated.items.map((item) => [item.name, item.ncm, item.quantity, item.grossWeightKg * item.quantity, item.unitPriceUsd, item.itemFob, item.allocatedExpenses, item.ii, item.ipi, item.taxes, item.totalCost, item.unitCost, item.chineseName ?? ""]), [], ["TOTAL", "", calculated.items.reduce((sum, item) => sum + item.quantity, 0), calculated.totalWeight, "", calculated.fobBrl, calculated.baseExpenses, calculated.items.reduce((sum, item) => sum + item.ii, 0), calculated.items.reduce((sum, item) => sum + item.ipi, 0), calculated.taxes, calculated.totalCost, "", ""]]);
-  styleSheet(itemsSheet, `Exporta Brasil · Detalhes por item · ${operation.reference}`, "M", [31, 14, 12, 16, 17, 18, 16, 15, 15, 15, 18, 18, 35]);
-  const itemTotalRow = 4 + calculated.items.length;
-  for (let column = 0; column < 13; column += 1) {
-    const cell = itemsSheet[XLSX.utils.encode_cell({ r: itemTotalRow, c: column })];
-    if (cell) cell.s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1D4ED8" } } };
-  }
-  XLSX.utils.book_append_sheet(workbook, itemsSheet, "Itens e custos");
-
-  const operationRows: (string | boolean)[][] = [[`Exporta Brasil · Dados operacionais · ${operation.reference}`], [], ["LINHA DO TEMPO", "Data", "Descrição"]];
-  context.timeline.forEach((entry) => operationRows.push([entry.title, formatDate(entry.occurredAt), entry.description ?? "—"]));
-  operationRows.push([], ["PENDÊNCIAS", "Prazo", "Situação"]);
-  context.tasks.forEach((task) => operationRows.push([task.title, formatDate(task.dueDate), task.completed ? "Concluída" : "Aberta"]));
-  operationRows.push([], ["DOCUMENTOS", "Referência", "Situação"]);
-  context.documents.forEach((document) => operationRows.push([`${document.type} · ${document.title}`, document.reference ?? "—", statusDocument(document.status)]));
-  const operationSheet = XLSX.utils.aoa_to_sheet(operationRows);
-  styleSheet(operationSheet, `Exporta Brasil · Dados operacionais · ${operation.reference}`, "C", [38, 20, 58]);
-  XLSX.utils.book_append_sheet(workbook, operationSheet, "Dados operacionais");
-  return workbook;
-}
-
-export function downloadOperationXlsx(operation: ImportOperation, context: ReportContext) {
-  XLSX.writeFile(createOperationWorkbook(operation, context), filename(operation.reference, "xlsx"), { compression: true });
-}
-
-export function downloadOperationPdf(operation: ImportOperation, context: ReportContext) {
-  const { calculated, opening, summary } = details(operation, context);
-  const pdf = new jsPDF({ unit: "mm", format: "a4" });
-  const navy: [number, number, number] = [13, 27, 42];
-  const blue: [number, number, number] = [29, 78, 216];
-  pdf.setFillColor(...navy); pdf.rect(0, 0, 210, 35, "F");
-  pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(19); pdf.text("Exporta Brasil", 15, 16);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9); pdf.text("Relatório de fechamento da importação", 15, 23); pdf.text(`Gerado em ${new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(new Date())}`, 15, 29);
-  pdf.setTextColor(26, 38, 52); pdf.setFont("helvetica", "bold"); pdf.setFontSize(16); pdf.text(operation.reference, 15, 47);
-  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.text(operation.customer, 15, 53);
-  autoTable(pdf, { startY: 59, body: opening, theme: "grid", styles: { fontSize: 8.5, cellPadding: 3, textColor: [30, 41, 59] }, columnStyles: { 0: { fontStyle: "bold", fillColor: [239, 246, 255] }, 2: { fontStyle: "bold", fillColor: [239, 246, 255] } }, margin: { left: 15, right: 15 } });
-  const summaryTop = (pdf as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
-  pdf.setTextColor(...blue); pdf.setFont("helvetica", "bold"); pdf.setFontSize(12); pdf.text("Resumo financeiro de fechamento", 15, summaryTop);
-  autoTable(pdf, { startY: summaryTop + 4, head: [["Componente", "Valor"]], body: summary, theme: "striped", styles: { fontSize: 9, cellPadding: 3 }, headStyles: { fillColor: navy }, columnStyles: { 1: { halign: "right", fontStyle: "bold" } }, margin: { left: 15, right: 15 } });
-  const finalY = (pdf as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
-  pdf.setFillColor(...blue); pdf.roundedRect(15, finalY + 8, 180, 16, 2, 2, "F"); pdf.setTextColor(255, 255, 255); pdf.setFontSize(9); pdf.text("CUSTO TOTAL PROJETADO", 20, finalY + 15); pdf.setFontSize(14); pdf.text(money.format(calculated.totalCost), 190, finalY + 16, { align: "right" });
-
-  pdf.addPage(); pdf.setTextColor(...navy); pdf.setFont("helvetica", "bold"); pdf.setFontSize(16); pdf.text("Detalhamento por item", 15, 18);
-  autoTable(pdf, { startY: 24, head: [["Produto / NCM", "Qtd.", "FOB", "Rateio", "Tributos", "Custo total", "Unitário"]], body: calculated.items.map((item) => [`${item.name}\n${item.ncm}`, item.quantity.toLocaleString("pt-BR"), money.format(item.itemFob), money.format(item.allocatedExpenses), money.format(item.taxes), money.format(item.totalCost), money.format(item.unitCost)]), theme: "striped", styles: { fontSize: 7.5, cellPadding: 2.5 }, headStyles: { fillColor: navy }, columnStyles: { 0: { cellWidth: 48 }, 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" }, 6: { halign: "right" } }, margin: { left: 10, right: 10 } });
-  pdf.addPage(); pdf.setTextColor(...navy); pdf.setFont("helvetica", "bold"); pdf.setFontSize(16); pdf.text("Registros operacionais", 15, 18);
-  autoTable(pdf, { startY: 24, head: [["Linha do tempo", "Data", "Descrição"]], body: context.timeline.map((entry) => [entry.title, formatDate(entry.occurredAt), entry.description ?? "—"]), theme: "grid", styles: { fontSize: 8, cellPadding: 2.5 }, headStyles: { fillColor: navy }, margin: { left: 15, right: 15 } });
-  const timelineEnd = (pdf as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
-  autoTable(pdf, { startY: timelineEnd + 9, head: [["Pendência", "Responsável", "Prazo", "Situação"]], body: context.tasks.map((task) => [task.title, task.assignee ?? "—", formatDate(task.dueDate), task.completed ? "Concluída" : "Aberta"]), theme: "grid", styles: { fontSize: 8, cellPadding: 2.5 }, headStyles: { fillColor: navy }, margin: { left: 15, right: 15 } });
-  const tasksEnd = (pdf as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
-  autoTable(pdf, { startY: tasksEnd + 9, head: [["Documento", "Referência", "Emissão", "Validade", "Situação"]], body: context.documents.map((document) => [`${document.type} · ${document.title}`, document.reference ?? "—", formatDate(document.issuedAt), formatDate(document.expiresAt), statusDocument(document.status)]), theme: "grid", styles: { fontSize: 8, cellPadding: 2.5 }, headStyles: { fillColor: navy }, margin: { left: 15, right: 15 } });
-  pdf.save(filename(operation.reference, "pdf"));
-}
+export const createOperationWorkbook = (operation: ImportOperation, context: ReportContext) => createReportWorkbook(operationReportData(operation, context));
+export const createOperationPdf = (operation: ImportOperation, context: ReportContext, fontBase64?: string) => createReportPdf(operationReportData(operation, context), fontBase64);
+export async function downloadOperationXlsx(operation: ImportOperation, context: ReportContext) { await downloadWorkbook(createOperationWorkbook(operation, context), filename(operation.reference, "xlsx")); }
+export async function downloadOperationPdf(operation: ImportOperation, context: ReportContext) { (await createOperationPdf(operation, context)).save(filename(operation.reference, "pdf")); }
