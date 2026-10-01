@@ -52,11 +52,22 @@ test("concurrent cache misses make one provider call", async () => {
   assert.deepEqual(results.map((items) => items[0].source).sort(), ["cache", "google"]);
 });
 
+test("returns saved translations even when Google fails for new names", async () => {
+  const database = databaseFixture();
+  await translateProductNames(database, ["背包"], async () => ["Mochila"]);
+  const result = await translateProductNames(database, ["背包", "发饰"], async () => { throw new Error("missing key"); });
+  assert.deepEqual(result, [
+    { original: "背包", translated: "Mochila", source: "cache" },
+    { original: "发饰", translated: null, source: "untranslated" }
+  ]);
+  assert.equal(database.rows.size, 1);
+});
+
 test("failed or incomplete provider responses never poison the cache", async () => {
   const database = databaseFixture();
-  await assert.rejects(translateProductNames(database, ["背包"], async () => []));
+  assert.equal((await translateProductNames(database, ["背包"], async () => []))[0].source, "untranslated");
   assert.equal(database.rows.size, 0);
-  await assert.rejects(translateProductNames(database, ["背包"], async () => { throw new Error("quota"); }));
+  assert.equal((await translateProductNames(database, ["背包"], async () => { throw new Error("quota"); }))[0].translated, null);
   assert.equal(database.rows.size, 0);
   assert.notEqual(translationKey("背包"), translationKey("背包 M"));
 });

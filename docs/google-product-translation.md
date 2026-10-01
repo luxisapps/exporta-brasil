@@ -9,7 +9,7 @@ O nome original em chinês é preservado em `chineseName`. O campo `name` passa 
 3. A API procura os nomes em `product_name_translations`, no PostgreSQL do Railway.
 4. Apenas os nomes ausentes são enviados ao Google Cloud Translation Basic, modelo NMT, como texto simples, de chinês para português.
 5. A tradução validada é gravada no banco. Um bloqueio de transação impede chamadas duplicadas para ausências concorrentes. O cache não depende da memória da API nem do navegador.
-6. A prévia mostra português e original chinês. O formulário permanece bloqueado até concluir leitura e tradução. Uma falha impede confirmar uma importação parcialmente traduzida; selecione a planilha novamente para tentar de novo. Lotes já concluídos ficam no cache.
+6. A prévia mostra português e original chinês. O formulário permanece bloqueado até concluir leitura e tradução. Se a tradução falhar, a importação continua: o nome original permanece em `chineseName` e `name` fica vazio para preenchimento manual nos detalhes. Traduções já concluídas e nomes encontrados no cache são mantidos. Falhas de sessão continuam desconectando o usuário.
 
 O cache usa o texto completo, incluindo modelos e medidas, mais idiomas e provedor. Ele é compartilhado pela empresa. Corrigir o nome de um produto na operação não altera automaticamente o cache das demais importações.
 

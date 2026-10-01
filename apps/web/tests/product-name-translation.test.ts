@@ -1,9 +1,40 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { translateImportedProducts } from "../src/lib/product-name-translation.ts";
+import { SessionExpiredError } from "../src/lib/api-fetch.ts";
 import type { ImportedProduct } from "../src/lib/product-sheet.ts";
 
 const product = (name: string): ImportedProduct => ({ name, ncm: "", quantity: 2, unitPriceUsd: 12, grossWeightKg: 1, iiRate: 0, ipiRate: 0 });
+
+test("network and provider failures preserve Chinese names and clear Portuguese names", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const fetcher of [async () => { throw new Error("offline"); }, async () => new Response("unavailable", { status: 503 })]) {
+      globalThis.fetch = fetcher;
+      const result = await translateImportedProducts([product("背包"), product("Mochila")], "https://test.example", "test-token");
+      assert.equal(result[0].name, "");
+      assert.equal(result[0].chineseName, "背包");
+      assert.equal(result[0].unitPriceUsd, 12);
+      assert.equal(result[1].name, "Mochila");
+    }
+    globalThis.fetch = async () => new Response(JSON.stringify({ message: "Sessão inválida." }), { status: 401 });
+    await assert.rejects(translateImportedProducts([product("背包")], "https://test.example", "test-token"), SessionExpiredError);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("keeps cache hits when another name cannot be translated", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ translations: [
+    { original: "背包", translated: "Mochila", source: "cache" },
+    { original: "发饰", translated: null, source: "untranslated" }
+  ] }));
+  try {
+    const result = await translateImportedProducts([product("背包"), product("发饰")], "https://test.example", "test-token");
+    assert.equal(result[0].name, "Mochila");
+    assert.equal(result[1].name, "");
+    assert.equal(result[1].chineseName, "发饰");
+  } finally { globalThis.fetch = originalFetch; }
+});
 
 test("translates unique Chinese names and preserves all original product data", async () => {
   const originalFetch = globalThis.fetch;
@@ -25,14 +56,16 @@ test("translates unique Chinese names and preserves all original product data", 
   } finally { globalThis.fetch = originalFetch; }
 });
 
-test("does not call translation for Portuguese names and rejects mismatched rows", async () => {
+test("does not call translation for Portuguese names and leaves mismatched rows blank", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => { throw new Error("unexpected provider call"); };
   try {
     const products = [product("Mochila")];
     assert.deepEqual(await translateImportedProducts(products, "https://test.example", "test-token"), products);
     globalThis.fetch = async () => new Response(JSON.stringify({ translations: [{ original: "wrong row", translated: "Mochila" }] }));
-    await assert.rejects(translateImportedProducts([product("背包")], "https://test.example", "test-token"), /inválido/);
+    const pending = await translateImportedProducts([product("背包")], "https://test.example", "test-token");
+    assert.equal(pending[0].name, "");
+    assert.equal(pending[0].chineseName, "背包");
   } finally { globalThis.fetch = originalFetch; }
 });
 

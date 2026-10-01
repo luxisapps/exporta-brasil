@@ -221,3 +221,8 @@ Object.assign(uiText, {
   "Traduzindo produtos…": { "en-US": "Translating products…", "zh-CN": "正在翻译产品…" },
   "Nome em chinês (original)": { "en-US": "Chinese name (original)", "zh-CN": "中文名称（原文）" }
 });
+
+Object.assign(uiText, {
+  "Nome em português pendente": { "en-US": "Portuguese name pending", "zh-CN": "待填写葡萄牙语名称" },
+  "Preencha o nome em português nos detalhes da importação.": { "en-US": "Enter the Portuguese name in the import details.", "zh-CN": "请在进口详情中填写葡萄牙语名称。" }
+});

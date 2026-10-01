@@ -8,7 +8,7 @@ export const translationCacheSchema = `CREATE TABLE IF NOT EXISTS product_name_t
 )`;
 
 export const translationKey = (text: string) => createHash("sha256").update(`google-nmt\0zh\0pt\0${text}`).digest("hex");
-export type NameTranslation = { original: string; translated: string; source: "cache" | "google" };
+export type NameTranslation = { original: string; translated: string | null; source: "cache" | "google" | "untranslated" };
 
 export async function googleTranslateNames(names: string[], apiKey = process.env.GOOGLE_TRANSLATE_API_KEY, fetcher = fetch): Promise<string[]> {
   if (!apiKey) throw new Error("Configure GOOGLE_TRANSLATE_API_KEY na API para traduzir os produtos em chinês.");
@@ -52,11 +52,13 @@ export async function translateProductNames(database: Pool, names: string[], tra
       cached = await read(client);
       const missing = unique.filter((name) => !cached.has(name));
       if (missing.length) {
-        const translations = await translate(missing);
-        if (translations.length !== missing.length || translations.some((text) => typeof text !== "string" || !text.trim())) throw new Error("Tradução incompleta.");
+        let translations: string[] = [];
+        try { translations = await translate(missing); } catch { /* Keep cache hits even when Google is unavailable. */ }
+        if (translations.length !== missing.length) translations = [];
         for (let index = 0; index < missing.length; index++) {
           const original = missing[index];
           const translated = translations[index];
+          if (typeof translated !== "string" || !translated.trim() || /\p{Script=Han}/u.test(translated)) continue;
           await client.query("INSERT INTO product_name_translations (cache_key, source_text, source_language, target_language, translated_text) VALUES ($1,$2,'zh','pt',$3) ON CONFLICT (cache_key) DO NOTHING", [translationKey(original), original, translated]);
           cached.set(original, translated);
           generated.add(original);
@@ -66,5 +68,5 @@ export async function translateProductNames(database: Pool, names: string[], tra
     } catch (error) { await client.query("ROLLBACK"); throw error; }
     finally { client.release(); }
   }
-  return names.map((original) => ({ original, translated: cached.get(original)!, source: generated.has(original) ? "google" : "cache" }));
+  return names.map((original) => ({ original, translated: cached.get(original) ?? null, source: generated.has(original) ? "google" : cached.has(original) ? "cache" : "untranslated" }));
 }
