@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -26,7 +27,7 @@ export function NcmField({ initialCode = "", apiUrl, token }: { initialCode?: st
     const controller = new AbortController();
     const timeout = setTimeout(() => {
       setLoading(true); setError("");
-      void fetch(`${apiUrl}/api/ncm?query=${encodeURIComponent(query)}`, { signal: controller.signal }).then(async (response) => {
+      void apiFetch(`${apiUrl}/api/ncm?query=${encodeURIComponent(query)}`, { signal: controller.signal }).then(async (response) => {
         const payload = await response.json() as { entries?: Entry[]; message?: string };
         if (!response.ok) throw new Error(payload.message || "Não foi possível consultar NCMs.");
         if (controller.signal.aborted) return;
@@ -44,7 +45,7 @@ export function NcmField({ initialCode = "", apiUrl, token }: { initialCode?: st
     const description = ["name", "englishName", "description"].map((key) => String(data.get(key) ?? "").trim()).filter(Boolean).join(". ");
     setAnalyzing(true); setError(""); setSuggestions([]); setQuestions([]);
     try {
-      const response = await fetch(`${apiUrl}/api/ncm/suggestions`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ description }) });
+      const response = await apiFetch(`${apiUrl}/api/ncm/suggestions`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ description }) });
       const payload = await response.json() as { suggestions?: Entry[]; missingInformation?: string[]; message?: string };
       if (!response.ok) throw new Error(payload.message || "Não foi possível consultar a IA.");
       setSuggestions(payload.suggestions ?? []); setQuestions(payload.missingInformation ?? []);

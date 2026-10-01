@@ -214,3 +214,5 @@ Object.assign(uiText, {
  "Selecione um cliente.": { "en-US": "Select a customer.", "zh-CN": "请选择客户。" },
  "Não foi possível criar a importação. Tente novamente.": { "en-US": "Could not create the import. Please try again.", "zh-CN": "无法创建进口业务，请重试。" }
 });
+
+Object.assign(uiText, { "Sua sessão expirou. Entre novamente.": { "en-US": "Your session has expired. Please sign in again.", "zh-CN": "您的会话已过期，请重新登录。" } });
