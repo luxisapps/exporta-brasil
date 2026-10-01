@@ -8,6 +8,7 @@ import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { Pool } from "pg";
 import { getNcmCatalog, searchNcms, suggestNcms } from "./ncm.js";
 import { canWriteSetting, manualTaxRates } from "./tax-settings.js";
+import { parseUserEdit, removesLastAdmin } from "./user-edit.js";
 import { calculateImport, hasApprovedBudget, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
@@ -323,6 +324,33 @@ app.post("/api/me/avatar", async (request, reply) => {
 });
 
 app.get("/api/users", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." }); return [...users.values()].map(safeUser); });
+app.patch<{ Params: { id: string }; Body: unknown }>("/api/users/:id", async (request, reply) => {
+  const admin = sessionUser(request.headers.authorization);
+  if (!admin) return reply.code(401).send({ message: "Sessão inválida." });
+  if (admin.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." });
+  const changes = parseUserEdit(request.body);
+  if (!changes) return reply.code(400).send({ message: "Informe nome, e-mail válido e perfil. Verifique os dados de contato." });
+  if (!database) return reply.code(503).send({ message: "Banco de dados indisponível." });
+  const client = await database.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('exporta-user-access-updates'))");
+    const result = await client.query("SELECT * FROM app_users WHERE id = $1 FOR UPDATE", [request.params.id]);
+    if (!result.rowCount) { await client.query("ROLLBACK"); return reply.code(404).send({ message: "Usuário não encontrado." }); }
+    const target = userFromRow(result.rows[0]);
+    const count = await client.query("SELECT COUNT(*)::int AS total FROM app_users WHERE role = 'admin'");
+    if (removesLastAdmin(target.role, changes.role, count.rows[0].total)) { await client.query("ROLLBACK"); return reply.code(409).send({ message: "Mantenha ao menos um administrador no sistema." }); }
+    const next = { ...target, ...changes };
+    await client.query("UPDATE app_users SET name=$2, email=$3, role=$4, phone=$5, job_title=$6 WHERE id=$1", [next.id, next.name, next.email, next.role, next.phone || null, next.jobTitle || null]);
+    await client.query("COMMIT");
+    users.set(next.id, next);
+    return safeUser(next);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    if ((error as { code?: string }).code === "23505") return reply.code(409).send({ message: "Este e-mail já está cadastrado." });
+    throw error;
+  } finally { client.release(); }
+});
 app.get<{ Params: { key: string } }>("/api/settings/:key", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sess\u00e3o inv\u00e1lida." }); if (!database) return reply.code(503).send({ message: "Banco de dados indispon\u00edvel." }); const result = await database.query("SELECT value, updated_at FROM app_settings WHERE key = $1", [request.params.key]); if (!result.rowCount) return reply.code(404).send({ message: "Parametriza\u00e7\u00e3o ainda n\u00e3o definida." }); return { value: result.rows[0].value, updatedAt: result.rows[0].updated_at }; });
 app.put<{ Params: { key: string }; Body: { value: unknown } }>("/api/settings/:key", async (request, reply) => {
   const user = sessionUser(request.headers.authorization);

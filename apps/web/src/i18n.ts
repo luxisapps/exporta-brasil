@@ -349,3 +349,12 @@ Object.assign(uiText, {
     "zh-CN": "添加产品以计算成本。"
   }
 });
+
+Object.assign(uiText, {
+  "Editar usuário": { "en-US": "Edit user", "zh-CN": "编辑用户" },
+  "Perfil de acesso": { "en-US": "Access role", "zh-CN": "访问角色" },
+  "Usuário atualizado.": { "en-US": "User updated.", "zh-CN": "用户已更新。" },
+  "Não foi possível atualizar o usuário.": { "en-US": "Unable to update the user.", "zh-CN": "无法更新用户。" },
+  "Mantenha ao menos um administrador no sistema.": { "en-US": "Keep at least one administrator in the system.", "zh-CN": "系统中必须保留至少一位管理员。" },
+  "Informe nome, e-mail válido e perfil. Verifique os dados de contato.": { "en-US": "Enter a name, valid email and role. Check the contact details.", "zh-CN": "请输入姓名、有效邮箱和角色，并检查联系信息。" }
+});
