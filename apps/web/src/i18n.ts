@@ -226,3 +226,82 @@ Object.assign(uiText, {
   "Nome em português pendente": { "en-US": "Portuguese name pending", "zh-CN": "待填写葡萄牙语名称" },
   "Preencha o nome em português nos detalhes da importação.": { "en-US": "Enter the Portuguese name in the import details.", "zh-CN": "请在进口详情中填写葡萄牙语名称。" }
 });
+
+Object.assign(uiText, {
+  "Buscar produtos": {
+    "en-US": "Search products",
+    "zh-CN": "搜索产品"
+  },
+  "Nome, SKU ou NCM": {
+    "en-US": "Name, SKU or NCM",
+    "zh-CN": "名称、SKU 或 NCM"
+  },
+  "Ordenar produtos": {
+    "en-US": "Sort products",
+    "zh-CN": "产品排序"
+  },
+  "Por página": {
+    "en-US": "Per page",
+    "zh-CN": "每页"
+  },
+  "Produtos por página": {
+    "en-US": "Products per page",
+    "zh-CN": "每页产品数"
+  },
+  "Ordem de cadastro": {
+    "en-US": "Original order",
+    "zh-CN": "原始顺序"
+  },
+  "Nome: A a Z": {
+    "en-US": "Name: A to Z",
+    "zh-CN": "名称：升序"
+  },
+  "Nome: Z a A": {
+    "en-US": "Name: Z to A",
+    "zh-CN": "名称：降序"
+  },
+  "Maior quantidade": {
+    "en-US": "Quantity: highest first",
+    "zh-CN": "数量：从高到低"
+  },
+  "Menor quantidade": {
+    "en-US": "Quantity: lowest first",
+    "zh-CN": "数量：从低到高"
+  },
+  "Maior FOB": {
+    "en-US": "FOB: highest first",
+    "zh-CN": "FOB：从高到低"
+  },
+  "Menor FOB": {
+    "en-US": "FOB: lowest first",
+    "zh-CN": "FOB：从低到高"
+  },
+  "Maiores tributos": {
+    "en-US": "Taxes: highest first",
+    "zh-CN": "税费：从高到低"
+  },
+  "Menores tributos": {
+    "en-US": "Taxes: lowest first",
+    "zh-CN": "税费：从低到高"
+  },
+  "Maior custo unitário": {
+    "en-US": "Unit cost: highest first",
+    "zh-CN": "单位成本：从高到低"
+  },
+  "Menor custo unitário": {
+    "en-US": "Unit cost: lowest first",
+    "zh-CN": "单位成本：从低到高"
+  },
+  "Nenhum produto encontrado.": {
+    "en-US": "No products found.",
+    "zh-CN": "未找到产品。"
+  },
+  "Paginação dos produtos": {
+    "en-US": "Product pagination",
+    "zh-CN": "产品分页"
+  },
+  "Adicione os produtos para calcular os custos.": {
+    "en-US": "Add products to calculate costs.",
+    "zh-CN": "添加产品以计算成本。"
+  }
+});
