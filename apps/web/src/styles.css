@@ -358,6 +358,9 @@ h1, h2, p { margin: 0; } small { display: block; }
 
 .products-toolbar { display:grid; grid-template-columns:minmax(220px,1fr) minmax(180px,230px) 110px auto; align-items:end; gap:14px; padding:16px 20px; border-bottom:1px solid rgba(148,163,184,.11); }
 .products-toolbar .search-field { width:100%; min-height:44px; }
+.task-assignee { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.task-assignee .user-avatar,.task-assignee .avatar { width:24px; height:24px; flex:0 0 24px; font-size:9px; }
+.task-assignee__skeleton { width:120px; height:24px; }
 .products-toolbar .text-button { min-height:44px; white-space:nowrap; }
 .products-pagination { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:14px 20px; border-top:1px solid rgba(148,163,184,.11); color:#9aafc8; font-size:12px; }
 .products-pagination .timeline-pagination { margin:0; }
