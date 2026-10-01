@@ -329,3 +329,12 @@ h1, h2, p { margin: 0; } small { display: block; }
 .ui-spinner { flex-shrink:0; animation:ui-spinner-rotate 1s linear infinite; }
 @keyframes ui-spinner-rotate { to { transform:rotate(360deg); } }
 @media (prefers-reduced-motion:reduce) { .ui-spinner { animation:none; } }
+
+.operation-container { display:grid; gap:6px; margin-top:16px; max-width:430px; }
+.operation-container__label { color:#a9b7c8; font-size:12px; }
+.operation-container__value { display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; }
+.operation-container__value strong { color:#dce7f5; font-size:13px; }
+.operation-container>small { color:#a9b7c8; font-size:11px; line-height:1.5; }
+.operation-container__form { display:grid; gap:12px; }
+.operation-container__form input { min-height:44px; }
+.operation-container__actions { display:flex; gap:8px; flex-wrap:wrap; }

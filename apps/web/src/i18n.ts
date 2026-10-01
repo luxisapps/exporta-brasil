@@ -196,3 +196,15 @@ Object.assign(uiText, {
  "Extraindo os produtos e valores. Aguarde para continuar.": { "en-US": "Extracting products and prices. Please wait to continue.", "zh-CN": "正在提取产品和价格，请等待完成。" },
  "Dados da importação": { "en-US": "Import information", "zh-CN": "进口信息" }
 });
+
+Object.assign(uiText, {
+ "Definir contêiner": { "en-US": "Set container", "zh-CN": "设置集装箱" },
+ "Editar contêiner": { "en-US": "Edit container", "zh-CN": "编辑集装箱" },
+ "Contêiner atualizado": { "en-US": "Container updated", "zh-CN": "集装箱已更新" },
+ "Disponível após aprovação do orçamento.": { "en-US": "Available after budget approval.", "zh-CN": "预算批准后可用。" }
+});
+
+Object.assign(uiText, {
+ "Salvar": { "en-US": "Save", "zh-CN": "保存" },
+ "Não informado": { "en-US": "Not provided", "zh-CN": "未填写" }
+});

@@ -72,6 +72,7 @@ const itemWeight = (item: ImportItem) => item.boxWeightKg && item.boxCount ? ite
 const itemVolume = (item: ImportItem) => item.totalVolumeM3 ?? ((item.lengthCm || 0) * (item.widthCm || 0) * (item.heightCm || 0) * (item.boxCount || 0) / 1_000_000);
 
 export function activeBudget(operation: Pick<ImportOperation, "budgets">) { return operation.budgets?.find((budget) => budget.status === "approved") ?? operation.budgets?.find((budget) => budget.status === "draft"); }
+export function hasApprovedBudget(operation: Pick<ImportOperation, "budgets">) { return operation.budgets?.some((budget) => budget.status === "approved") ?? false; }
 export function calculateImport(operation: Pick<ImportOperation, "items" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "budgets">) {
   const budget = activeBudget(operation);
   const exchangeRate = budget?.exchangeRate ?? operation.exchangeRate;
