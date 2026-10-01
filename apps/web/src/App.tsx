@@ -306,7 +306,7 @@ function BackofficeApp({ session, onSessionUpdate, onLogout, locale, onLocaleCha
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, shipmentStatus: "not_shipped", budgets: [newBudget(5.4)], actualExpenses: [], items: importedItems.map((item) => ({ ...item, id: uid("item") })),
       timeline: [{ id: uid("timeline"), title: "Operação criada", description: importedItems.length ? `Processo aberto com ${importedItems.length} produto(s) importados por planilha.` : "Processo aberto para acompanhamento operacional.", occurredAt: new Date().toISOString(), actorId: session.user.id, actorName: session.user.name, recordedAt: new Date().toISOString(), type: "milestone" }]
     };
-    setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); setImportPort(""); openOperations();
+    setOperations((current) => [operation, ...current]); setImportCustomerId(""); setShowNewImport(false); setImportPort(""); openOperation(operation.id);
     } catch (error) { setCreateImportError(error instanceof Error ? error.message : "Não foi possível criar a importação. Tente novamente."); }
     finally { creatingImportRef.current = false; setCreatingImport(false); }
   };
