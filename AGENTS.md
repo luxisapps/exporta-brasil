@@ -15,3 +15,5 @@ Selection fields must use the shared shadcn/Radix Select (`FieldSelect` for text
 Use the shared `MoneyAmount` / `CurrencyEquivalents` components for every monetary display. Show subdued, smaller CNY and USD equivalents below the primary amount, including currency inputs via `NumberInput`. Counts, physical measures and percentages must not be converted.
 
 Use the current BCB PTAX sell rates from the shared currency context for indicative equivalents. Preserve the operation's budget exchange rate for accounting calculations. Never invent missing exchange rates. Exports must freeze and disclose the reference rates and quote dates, include the same equivalents, and use the current domain calculator.
+
+The header exchange quote is the deliberate inline exception: `USD 1 = R$ x = CNY x`, always on one line. Source and quote time belong in its tooltip.

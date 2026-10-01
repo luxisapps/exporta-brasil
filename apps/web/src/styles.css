@@ -453,3 +453,10 @@ h1, h2, p { margin: 0; } small { display: block; }
 .money-amount.money-amount { display: inline-flex; flex-direction: column; gap: 3px; padding: 0; background: transparent; border: 0; color: inherit; font: inherit; white-space: normal; overflow: visible; }
 .money-amount .money-amount__primary { display: block; padding: 0; background: transparent; border: 0; color: inherit; font: inherit; white-space: normal; overflow: visible; }
 .report-phase-summary .money-amount { display: flex; margin-top: 8px; color: var(--text, #f1f5f9); font-size: 19px; font-weight: 600; }
+
+/* The header quote is a single currency equation, including on mobile. */
+.market-quote { flex-shrink:0; }
+.market-quote .market-quote__conversion { display:inline-flex; align-items:center; flex-wrap:nowrap; gap:5px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.market-quote .market-quote__conversion span { display:inline; }
+.market-quote__equals { color:#9dadc1; font-weight:400; }
+@media (max-width:767px) { .market-quote { gap:5px; } .market-quote .market-quote__conversion { font-size:10px; gap:3px; } .market-quote > svg { display:none; } }
