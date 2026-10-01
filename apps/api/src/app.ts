@@ -11,7 +11,7 @@ import { canWriteSetting, manualTaxRates } from "./tax-settings.js";
 import { calculateImport, hasApprovedBudget, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
-await app.register(cors, { origin: true });
+await app.register(cors, { origin: true, methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] });
 await app.register(fastifyMultipart, { limits: { fileSize: 1024 * 1024, files: 1 } });
 
 const imports = new Map<string, ImportOperation>();
