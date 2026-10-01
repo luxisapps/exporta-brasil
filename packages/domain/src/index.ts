@@ -40,7 +40,7 @@ export type ImportItem = {
 };
 
 export type OperationTimelineEntry = { id: string; title: string; description?: string; occurredAt: string; actorId?: string; actorName?: string; recordedAt?: string; type: "milestone" | "status" | "note" };
-export type OperationTask = { id: string; title: string; assignee?: string; dueDate?: string; completed: boolean; createdAt: string };
+export type OperationTask = { id: string; title: string; assigneeId?: string; assignee?: string; dueDate?: string; completed: boolean; createdAt: string };
 export type OperationDocument = { id: string; type: string; title: string; reference?: string; issuedAt?: string; expiresAt?: string; status: "pending" | "available" | "expired"; createdAt: string };
 
 export type Customer = { id: string; legalName: string; tradeName: string; taxId: string; contactName: string; email: string; phone: string; postalCode?: string; street?: string; number?: string; complement?: string; district?: string; city?: string; state?: string; registrationStatus?: string; status: "active" | "inactive"; createdAt: string };

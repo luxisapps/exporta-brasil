@@ -272,6 +272,7 @@ Object.assign(uiText, {
     "en-US": "FOB: highest first",
     "zh-CN": "FOB：从高到低"
   },
+  "Ex.: Conferir invoice antes do registro": { "en-US": "E.g.: Check invoice before registration", "zh-CN": "例如：登记前核对发票" },
   "Menor FOB": {
     "en-US": "FOB: lowest first",
     "zh-CN": "FOB：从低到高"
