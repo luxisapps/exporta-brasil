@@ -7,6 +7,7 @@ export type ProductSheetResult = { items: ImportedProduct[]; warnings: string[];
 type Field = keyof ImportedProduct;
 const headerAliases: Partial<Record<Field, string[]>> = {
   name: ["produto", "descricao", "descricao comercial", "nome", "item", "产品名称", "品名", "中文品名", "product name"],
+  chineseName: ["中文品名", "产品名称", "品名", "nome em chines", "chinese name"],
   englishName: ["英文品名", "english product name", "english name", "nome em ingles"],
   sku: ["sku", "产品sku", "product sku"],
   description: ["详细描述", "descricao detalhada", "description"],
@@ -58,7 +59,9 @@ export async function parseProductSheet(file: File): Promise<ProductSheetResult>
     const value = (field: Field) => { const position = column(field); return position < 0 ? 0 : toNumber(row[position]); };
     const text = (field: Field) => { const position = column(field); return position < 0 ? "" : String(row[position] ?? "").trim(); };
     const boxWeightKg = value("boxWeightKg"); const boxCount = value("boxCount");
-    return [{ name, englishName:text("englishName") || undefined, sku:text("sku") || undefined, description:text("description") || undefined, leadTime:text("leadTime") || undefined, quantity, ncm:text("ncm"), unitPriceUsd:value("unitPriceUsd"), grossWeightKg: boxWeightKg && boxCount ? boxWeightKg * boxCount / quantity : value("grossWeightKg"), boxWeightKg:boxWeightKg || undefined, boxCount:boxCount || undefined, unitsPerBox:value("unitsPerBox") || undefined, lengthCm:value("lengthCm") || undefined, widthCm:value("widthCm") || undefined, heightCm:value("heightCm") || undefined, totalVolumeM3:value("totalVolumeM3") || undefined, iiRate:value("iiRate"), ipiRate:value("ipiRate") }];
+    const chineseColumn = column("chineseName");
+    const chineseName = chineseColumn >= 0 ? String(row[chineseColumn] ?? "") : /\p{Script=Han}/u.test(name) ? String(row[nameColumn] ?? "") : "";
+    return [{ name, chineseName: chineseName.trim() ? chineseName : undefined, englishName:text("englishName") || undefined, sku:text("sku") || undefined, description:text("description") || undefined, leadTime:text("leadTime") || undefined, quantity, ncm:text("ncm"), unitPriceUsd:value("unitPriceUsd"), grossWeightKg: boxWeightKg && boxCount ? boxWeightKg * boxCount / quantity : value("grossWeightKg"), boxWeightKg:boxWeightKg || undefined, boxCount:boxCount || undefined, unitsPerBox:value("unitsPerBox") || undefined, lengthCm:value("lengthCm") || undefined, widthCm:value("widthCm") || undefined, heightCm:value("heightCm") || undefined, totalVolumeM3:value("totalVolumeM3") || undefined, iiRate:value("iiRate"), ipiRate:value("ipiRate") }];
   });
   if (!items.length) throw new Error("Nenhum produto válido foi encontrado na planilha.");
   if (candidateCount > 1) warnings.push(`Aba “${selected.sheetName}” selecionada automaticamente por conter a maior lista de produtos.`);

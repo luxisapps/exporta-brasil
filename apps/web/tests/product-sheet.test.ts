@@ -32,3 +32,13 @@ test("preserves sheet selection and invalid-quantity warnings", async () => {
   assert.deepEqual(result.items.map((item) => item.name), ["First", "Last"]);
   assert.equal(result.warnings.length, 2);
 });
+
+
+test("preserves the original Chinese name and keeps a supplied Portuguese name", async () => {
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["Produto", "中文品名", "Quantidade"], ["Mochila", "背包", 2], ["发饰5件套", "发饰5件套", 3]]), "Products");
+  const result = await parseProductSheet(fileFromWorkbook(workbook));
+  assert.equal(result.items[0].name, "Mochila");
+  assert.equal(result.items[0].chineseName, "背包");
+  assert.equal(result.items[1].chineseName, "发饰5件套");
+});

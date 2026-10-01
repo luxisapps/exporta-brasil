@@ -64,10 +64,10 @@ export function createOperationWorkbook(operation: ImportOperation, context: Rep
   summarySheet["B21"].s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1D4ED8" } } };
   XLSX.utils.book_append_sheet(workbook, summarySheet, "Resumo de fechamento");
 
-  const itemsSheet = XLSX.utils.aoa_to_sheet([[`Exporta Brasil · Detalhes por item · ${operation.reference}`], [], ["Produto", "NCM", "Quantidade", "Peso bruto (kg)", "Valor unit. USD", "FOB convertido", "Rateio", "II", "IPI", "Tributos", "Custo total", "Custo unitário"], ...calculated.items.map((item) => [item.name, item.ncm, item.quantity, item.grossWeightKg * item.quantity, item.unitPriceUsd, item.itemFob, item.allocatedExpenses, item.ii, item.ipi, item.ii + item.ipi, item.totalCost, item.unitCost]), [], ["TOTAL", "", calculated.items.reduce((sum, item) => sum + item.quantity, 0), calculated.totalWeight, "", calculated.fobBrl, calculated.baseExpenses, calculated.items.reduce((sum, item) => sum + item.ii, 0), calculated.items.reduce((sum, item) => sum + item.ipi, 0), calculated.taxes, calculated.totalCost, ""]]);
-  styleSheet(itemsSheet, `Exporta Brasil · Detalhes por item · ${operation.reference}`, "L", [31, 14, 12, 16, 17, 18, 16, 15, 15, 15, 18, 18]);
+  const itemsSheet = XLSX.utils.aoa_to_sheet([[`Exporta Brasil · Detalhes por item · ${operation.reference}`], [], ["Produto", "NCM", "Quantidade", "Peso bruto (kg)", "Valor unit. USD", "FOB convertido", "Rateio", "II", "IPI", "Tributos", "Custo total", "Custo unitário", "Nome em chinês (original)"], ...calculated.items.map((item) => [item.name, item.ncm, item.quantity, item.grossWeightKg * item.quantity, item.unitPriceUsd, item.itemFob, item.allocatedExpenses, item.ii, item.ipi, item.ii + item.ipi, item.totalCost, item.unitCost, item.chineseName ?? ""]), [], ["TOTAL", "", calculated.items.reduce((sum, item) => sum + item.quantity, 0), calculated.totalWeight, "", calculated.fobBrl, calculated.baseExpenses, calculated.items.reduce((sum, item) => sum + item.ii, 0), calculated.items.reduce((sum, item) => sum + item.ipi, 0), calculated.taxes, calculated.totalCost, "", ""]]);
+  styleSheet(itemsSheet, `Exporta Brasil · Detalhes por item · ${operation.reference}`, "M", [31, 14, 12, 16, 17, 18, 16, 15, 15, 15, 18, 18, 35]);
   const itemTotalRow = 4 + calculated.items.length;
-  for (let column = 0; column < 12; column += 1) {
+  for (let column = 0; column < 13; column += 1) {
     const cell = itemsSheet[XLSX.utils.encode_cell({ r: itemTotalRow, c: column })];
     if (cell) cell.s = { font: { bold: true, color: { rgb: "FFFFFF" } }, fill: { fgColor: { rgb: "1D4ED8" } } };
   }

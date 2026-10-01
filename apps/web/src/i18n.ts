@@ -216,3 +216,8 @@ Object.assign(uiText, {
 });
 
 Object.assign(uiText, { "Sua sessão expirou. Entre novamente.": { "en-US": "Your session has expired. Please sign in again.", "zh-CN": "您的会话已过期，请重新登录。" } });
+
+Object.assign(uiText, {
+  "Traduzindo produtos…": { "en-US": "Translating products…", "zh-CN": "正在翻译产品…" },
+  "Nome em chinês (original)": { "en-US": "Chinese name (original)", "zh-CN": "中文名称（原文）" }
+});

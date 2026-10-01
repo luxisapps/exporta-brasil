@@ -24,6 +24,7 @@ export type ImportItem = {
   grossWeightKg: number;
   iiRate: number;
   ipiRate: number;
+  chineseName?: string;
   englishName?: string;
   sku?: string;
   description?: string;
