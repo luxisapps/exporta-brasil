@@ -7,6 +7,7 @@ import fastifyMultipart from "@fastify/multipart";
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { Pool } from "pg";
 import { getNcmCatalog, searchNcms, suggestNcms } from "./ncm.js";
+import { canWriteSetting, manualTaxRates } from "./tax-settings.js";
 import { calculateImport, hasApprovedBudget, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
@@ -323,7 +324,16 @@ app.post("/api/me/avatar", async (request, reply) => {
 
 app.get("/api/users", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sessão inválida." }); return [...users.values()].map(safeUser); });
 app.get<{ Params: { key: string } }>("/api/settings/:key", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sess\u00e3o inv\u00e1lida." }); if (!database) return reply.code(503).send({ message: "Banco de dados indispon\u00edvel." }); const result = await database.query("SELECT value, updated_at FROM app_settings WHERE key = $1", [request.params.key]); if (!result.rowCount) return reply.code(404).send({ message: "Parametriza\u00e7\u00e3o ainda n\u00e3o definida." }); return { value: result.rows[0].value, updatedAt: result.rows[0].updated_at }; });
-app.put<{ Params: { key: string }; Body: { value: unknown } }>("/api/settings/:key", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user || user.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); if (!database) return reply.code(503).send({ message: "Banco de dados indispon\u00edvel." }); await database.query("INSERT INTO app_settings (key, value, updated_at, updated_by) VALUES ($1, $2::jsonb, NOW(), $3) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by", [request.params.key, JSON.stringify(request.body.value), user.id]); return { value: request.body.value }; });
+app.put<{ Params: { key: string }; Body: { value: unknown } }>("/api/settings/:key", async (request, reply) => {
+  const user = sessionUser(request.headers.authorization);
+  if (!user) return reply.code(401).send({ message: "Sessão inválida." });
+  if (!canWriteSetting(user.role, request.params.key)) return reply.code(403).send({ message: "Acesso restrito a administradores." });
+  if (!database) return reply.code(503).send({ message: "Banco de dados indisponível." });
+  const value = request.params.key === "tax-rates" ? manualTaxRates(request.body?.value) : request.body.value;
+  if (request.params.key === "tax-rates" && !value) return reply.code(400).send({ message: "Informe todos os parâmetros com valores numéricos iguais ou maiores que zero." });
+  await database.query("INSERT INTO app_settings (key, value, updated_at, updated_by) VALUES ($1, $2::jsonb, NOW(), $3) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by", [request.params.key, JSON.stringify(value), user.id]);
+  return { value };
+});
 app.post<{ Body: { name: string; email: string; role: UserRole; initialPassword: string } }>("/api/users", async (request, reply) => { const admin = sessionUser(request.headers.authorization); if (!admin || admin.role !== "admin") return reply.code(403).send({ message: "Acesso restrito a administradores." }); if (request.body.initialPassword.length < 8) return reply.code(400).send({ message: "A senha inicial deve ter ao menos 8 caracteres." }); if ([...users.values()].some((item) => item.email === request.body.email.trim().toLowerCase())) return reply.code(409).send({ message: "Este e-mail já está cadastrado." }); const user: User = { id: `user-${crypto.randomUUID()}`, name: request.body.name.trim(), email: request.body.email.trim().toLowerCase(), role: request.body.role, passwordHash: hashPassword(request.body.initialPassword), mustChangePassword: true, createdAt: new Date().toISOString(), preferredLocale: "pt-BR" }; users.set(user.id, user); await persistUser(user); return reply.code(201).send(safeUser(user)); });
 
 app.get("/api/port-facilities", async (request, reply) => {
