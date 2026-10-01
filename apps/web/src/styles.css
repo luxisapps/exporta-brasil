@@ -358,6 +358,18 @@ h1, h2, p { margin: 0; } small { display: block; }
 
 .products-toolbar { display:grid; grid-template-columns:minmax(220px,1fr) minmax(180px,230px) 110px auto; align-items:end; gap:14px; padding:16px 20px; border-bottom:1px solid rgba(148,163,184,.11); }
 .products-toolbar .search-field { width:100%; min-height:44px; }
+.operation-phase-header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:22px 24px; margin-bottom:18px; border:1px solid #344561; border-radius:14px; background:rgba(18,30,49,.65); }
+.operation-phase-header.is-approved { border-color:#315344; background:rgba(15,36,28,.6); }
+.operation-phase-header h2 { margin:10px 0 6px; font-size:22px; letter-spacing:-.02em; }
+.operation-phase-header p { margin:0; color:#bfcee3; font-size:13px; line-height:1.5; }
+.operation-phase-header small { display:block; margin-top:8px; color:#bfcee3; font-size:12px; }
+.operation-phase-header__action { flex:0 0 auto; max-width:250px; }
+.operation-phase-header__action .button { min-height:44px; }
+.operation-phase-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:6px; font-size:12px; font-weight:600; white-space:nowrap; }
+.operation-phase-badge.is-costs { color:#bfdbfe; background:#1b3454; }
+.operation-phase-badge.is-approved { color:#bbf7d0; background:#18412c; }
+.financial-workspace__heading>.field { width:230px; flex:0 0 auto; }
+@media (max-width:639px) { .operation-phase-header { align-items:stretch; flex-direction:column; gap:16px; padding:18px; } .operation-phase-header__action { max-width:none; } .operation-phase-header__action .button { width:100%; } .financial-workspace__heading>.field { width:100%; } }
 .task-assignee { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
 .task-assignee .user-avatar,.task-assignee .avatar { width:24px; height:24px; flex:0 0 24px; font-size:9px; }
 .task-assignee__skeleton { width:120px; height:24px; }

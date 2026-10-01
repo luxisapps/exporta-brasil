@@ -1,4 +1,4 @@
-export type ImportStatus = "draft" | "quotation" | "in_transit" | "at_port" | "customs" | "cleared" | "completed";
+export type ImportStatus = "draft" | "quotation" | "awaiting_approval" | "awaiting_shipment" | "in_transit" | "at_port" | "customs" | "cleared" | "completed";
 export type PortStatus = "awaiting_departure" | "in_transit" | "awaiting_berth" | "unloading" | "customs_clearance" | "released";
 export type CustomsChannel = "green" | "yellow" | "red" | "gray";
 /** `unassigned` representa uma operação sem parametrização aduaneira ainda. */
@@ -60,7 +60,7 @@ export function nextImportReference(operations: Iterable<Pick<ImportOperation, "
   return `EB-${year}-${String(highest + 1).padStart(3, "0")}`;
 }
 
-export const importStatusMeta: Record<ImportStatus, { label: string; tone: "neutral" | "info" | "warning" | "success" }> = { draft:{label:"Rascunho",tone:"neutral"}, quotation:{label:"Em cotação",tone:"info"}, in_transit:{label:"Em trânsito",tone:"info"}, at_port:{label:"No porto",tone:"warning"}, customs:{label:"Em desembaraço",tone:"warning"}, cleared:{label:"Liberada",tone:"success"}, completed:{label:"Concluída",tone:"success"} };
+export const importStatusMeta: Record<ImportStatus, { label: string; tone: "neutral" | "info" | "warning" | "success" }> = { draft:{label:"Rascunho",tone:"neutral"}, quotation:{label:"Estimando custos",tone:"info"}, awaiting_approval:{label:"Aguardando aprovação",tone:"warning"}, awaiting_shipment:{label:"Aguardando embarque",tone:"info"}, in_transit:{label:"Em trânsito",tone:"info"}, at_port:{label:"No porto",tone:"warning"}, customs:{label:"Em desembaraço",tone:"warning"}, cleared:{label:"Liberada",tone:"success"}, completed:{label:"Concluída",tone:"success"} };
 export const portStatusMeta: Record<PortStatus, { label: string; detail: string }> = { awaiting_departure:{label:"Aguardando embarque",detail:"Documentação de origem em conferência"}, in_transit:{label:"Em trânsito marítimo",detail:"Navio a caminho do porto de destino"}, awaiting_berth:{label:"Aguardando atracação",detail:"Chegada confirmada; aguardando janela do terminal"}, unloading:{label:"Em descarga",detail:"Contêiner em movimentação no terminal"}, customs_clearance:{label:"Em desembaraço aduaneiro",detail:"Processo sob análise da alfândega"}, released:{label:"Carga liberada",detail:"Disponível para retirada programada"} };
 export const customsChannelMeta: Record<CustomsSignal, { label: string; detail: string }> = { unassigned:{label:"Sem canal",detail:"Canal ainda não informado"}, green:{label:"Canal verde",detail:"Desembaraço automático"}, yellow:{label:"Canal amarelo",detail:"Exame documental"}, red:{label:"Canal vermelho",detail:"Exame documental e físico"}, gray:{label:"Canal cinza",detail:"Apuração de indícios de fraude"} };
 export const shipmentStatusMeta: Record<ShipmentStatus, { label: string }> = { not_shipped:{label:"Não embarcado"}, purchase_confirmed:{label:"Compra confirmada"}, shipped:{label:"Embarcado"}, arrived:{label:"Chegou ao destino"}, closed:{label:"Fechada"} };
@@ -74,6 +74,21 @@ const itemVolume = (item: ImportItem) => item.totalVolumeM3 ?? ((item.lengthCm |
 
 export function activeBudget(operation: Pick<ImportOperation, "budgets">) { return operation.budgets?.find((budget) => budget.status === "approved") ?? operation.budgets?.find((budget) => budget.status === "draft"); }
 export function hasApprovedBudget(operation: Pick<ImportOperation, "budgets">) { return operation.budgets?.some((budget) => budget.status === "approved") ?? false; }
+export const costOperationStatuses: ImportStatus[] = ["draft", "quotation", "awaiting_approval"];
+export const approvedOperationStatuses: ImportStatus[] = ["awaiting_shipment", "in_transit", "at_port", "customs", "cleared", "completed"];
+export function operationStatusOptions(operation: Pick<ImportOperation, "budgets">): ImportStatus[] { return hasApprovedBudget(operation) ? approvedOperationStatuses : costOperationStatuses; }
+/** Keeps legacy status values in storage while presenting only states valid for the current phase. */
+export function effectiveOperationStatus(operation: Pick<ImportOperation, "budgets" | "status">): ImportStatus {
+  const options = operationStatusOptions(operation);
+  return options.includes(operation.status) ? operation.status : hasApprovedBudget(operation) ? "awaiting_shipment" : "quotation";
+}
+export function approveOperationCosts(operation: ImportOperation, fallbackBudget: ImportBudget, actorName: string, approvedAt = new Date().toISOString()): Partial<ImportOperation> {
+  // Legacy estimates have no budget-wide rates; approval must preserve their current calculation.
+  const current = activeBudget(operation) ?? { ...fallbackBudget, taxRates: [], marginRate: 0 };
+  const approved = { ...current, status: "approved" as const, approvedAt, approvedBy: actorName };
+  const budgets = operation.budgets?.some((budget) => budget.id === current.id) ? operation.budgets.map((budget) => budget.id === current.id ? approved : budget) : [...(operation.budgets ?? []), approved];
+  return { budgets, status: approvedOperationStatuses.includes(operation.status) ? operation.status : "awaiting_shipment", shipmentStatus: operation.shipmentStatus ?? "not_shipped" };
+}
 export function calculateImport(operation: Pick<ImportOperation, "items" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "budgets">) {
   const budget = activeBudget(operation);
   const exchangeRate = budget?.exchangeRate ?? operation.exchangeRate;

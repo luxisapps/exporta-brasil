@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "@e965/xlsx";
-import { calculateImport, customsChannelMeta, importStatusMeta, portStatusMeta, type ImportOperation, type OperationDocument, type OperationTask, type OperationTimelineEntry } from "@exporta/domain";
+import { calculateImport, effectiveOperationStatus, hasApprovedBudget, customsChannelMeta, importStatusMeta, portStatusMeta, type ImportOperation, type OperationDocument, type OperationTask, type OperationTimelineEntry } from "@exporta/domain";
 
 type ReportContext = { timeline: OperationTimelineEntry[]; tasks: OperationTask[]; documents: OperationDocument[] };
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
@@ -22,7 +22,8 @@ function details(operation: ImportOperation, context: ReportContext) {
       ["Referência", operation.reference, "Cliente", operation.customer],
       ["Contêiner", operation.container || "—", "Responsável", operation.assigneeName || "—"],
       ["Porto de destino", operation.port || "Porto a definir", "ETA", formatDate(operation.eta)],
-      ["Status", importStatusMeta[operation.status]?.label ?? operation.status, "Status portuário", portStatusMeta[operation.portStatus]?.label ?? operation.portStatus],
+      ["Fase", hasApprovedBudget(operation) ? "Aprovado" : "Custos", "Status", importStatusMeta[effectiveOperationStatus(operation)].label],
+      ["Status portuário", portStatusMeta[operation.portStatus]?.label ?? operation.portStatus, "", ""],
       ["Canal aduaneiro", customsChannelMeta[operation.customsChannel]?.label ?? operation.customsChannel, "Atualizado em", formatDate(operation.updatedAt)]
     ],
     summary: [
