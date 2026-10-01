@@ -208,3 +208,9 @@ Object.assign(uiText, {
  "Salvar": { "en-US": "Save", "zh-CN": "保存" },
  "Não informado": { "en-US": "Not provided", "zh-CN": "未填写" }
 });
+
+Object.assign(uiText, {
+ "Criando importação…": { "en-US": "Creating import…", "zh-CN": "正在创建进口业务…" },
+ "Selecione um cliente.": { "en-US": "Select a customer.", "zh-CN": "请选择客户。" },
+ "Não foi possível criar a importação. Tente novamente.": { "en-US": "Could not create the import. Please try again.", "zh-CN": "无法创建进口业务，请重试。" }
+});

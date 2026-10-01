@@ -8,7 +8,7 @@ import {
   Banknote, CalendarClock, Check, CheckCircle2, Download, ExternalLink, Eye, EyeOff, FileText, LockKeyhole, Mail, Newspaper, Pencil, RotateCcw, Search, ShipWheel, SlidersHorizontal, Trash2, Upload, UserPlus, UserRound, Users, X, ZoomIn, ZoomOut
 } from "lucide-react";
 import {
-  calculateActualExpenses, calculateImport, nextImportReference, hasApprovedBudget, customsChannelMeta, importStatusMeta, portStatusMeta, shipmentStatusMeta, taxRateLabels,
+  calculateActualExpenses, calculateImport, hasApprovedBudget, customsChannelMeta, importStatusMeta, portStatusMeta, shipmentStatusMeta, taxRateLabels,
   type Customer, type CustomsChannel, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type ImportBudget, type ImportExpense, type ExpenseAllocationMethod, type ExpenseStatus, type ShipmentStatus, type TaxRate, type TaxRateCode, type OperationDocument, type OperationTask, type OperationTimelineEntry, type PortFacility, type PortStatus
 } from "@exporta/domain";
 import { DialogClose, DialogContent, DialogRoot, DialogTitle } from "./components/ui/dialog";
@@ -196,6 +196,9 @@ function BackofficeApp({ session, onSessionUpdate, onLogout, locale, onLocaleCha
   const [operationsUrlState, setOperationsUrlState] = useState(() => window.location.search);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showNewImport, setShowNewImport] = useState(false);
+  const [creatingImport, setCreatingImport] = useState(false);
+  const creatingImportRef = useRef(false);
+  const [createImportError, setCreateImportError] = useState("");
   const [showNewItem, setShowNewItem] = useState(false);
   const [showProductSheetImport, setShowProductSheetImport] = useState(false);
   const [editingItem, setEditingItem] = useState<ImportItem | null>(null);
@@ -274,20 +277,28 @@ function BackofficeApp({ session, onSessionUpdate, onLogout, locale, onLocaleCha
     }));
   };
 
-  const createOperation = (event: FormEvent<HTMLFormElement>, importedItems: ImportedProduct[] = []) => {
+  const createOperation = async (event: FormEvent<HTMLFormElement>, importedItems: ImportedProduct[] = []) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    if (creatingImportRef.current) return;
     const customerId = String(form.get("customerId"));
     const customer = customers.find((item) => item.id === customerId);
-    if (!customer) return;
+    if (!customer) { setCreateImportError("Selecione um cliente."); return; }
+    creatingImportRef.current = true; setCreatingImport(true); setCreateImportError("");
+    try {
+      const response = await fetch(`${apiUrl}/api/imports`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${session.token}` }, body: JSON.stringify({ customerId, customer: customer.tradeName || customer.legalName, port: String(form.get("port") || ""), eta: String(form.get("eta")), existingReferences: operations.map((operation) => operation.reference) }) });
+      const payload = await response.json() as { id?: string; reference?: string; message?: string };
+      if (!response.ok || !payload.id || !payload.reference) throw new Error(payload.message || "Não foi possível criar a importação. Tente novamente.");
     const operation: ImportOperation = {
-      id: uid("imp"), reference: nextImportReference(operations),
+      id: payload.id, reference: payload.reference,
       customerId, customer: customer.tradeName || customer.legalName, assigneeId: session.user.id, assigneeName: session.user.name, port: String(form.get("port")),
       container: "", eta: String(form.get("eta")), status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned",
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, shipmentStatus: "not_shipped", budgets: [newBudget(5.4)], actualExpenses: [], items: importedItems.map((item) => ({ ...item, id: uid("item") })),
       timeline: [{ id: uid("timeline"), title: "Operação criada", description: importedItems.length ? `Processo aberto com ${importedItems.length} produto(s) importados por planilha.` : "Processo aberto para acompanhamento operacional.", occurredAt: new Date().toISOString(), actorId: session.user.id, actorName: session.user.name, recordedAt: new Date().toISOString(), type: "milestone" }]
     };
-    setOperations((current) => [{ ...operation, reference: nextImportReference(current) }, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); setImportPort(""); openOperations();
+    setOperations((current) => [operation, ...current]); setSelectedId(operation.id); setImportCustomerId(""); setShowNewImport(false); setImportPort(""); openOperations();
+    } catch (error) { setCreateImportError(error instanceof Error ? error.message : "Não foi possível criar a importação. Tente novamente."); }
+    finally { creatingImportRef.current = false; setCreatingImport(false); }
   };
 
   const saveCustomer = (event: FormEvent<HTMLFormElement>) => {
@@ -374,7 +385,7 @@ function BackofficeApp({ session, onSessionUpdate, onLogout, locale, onLocaleCha
     </main>
     <nav className="bottom-nav" aria-label="Navegação móvel">{navigation.slice(0, 4).map(({ id, labelKey, icon: Icon }) => <button key={id} className={view === id ? "is-active" : ""} onClick={() => changeView(id)}><Icon size={19} /><span>{t(locale, labelKey)}</span></button>)}</nav>
     {portOperationId && <Dialog title="Selecionar porto" className="dialog--wide" onClose={() => setPortOperationId(null)}><PortPickerContent facilities={portFacilities} state={portCatalogState} error={portCatalogError} onRetry={loadPortCatalog} onBack={() => setPortOperationId(null)} onSelect={(port) => { updateOperation(portOperationId, { port }); setPortOperationId(null); }} /></Dialog>}
-    {showNewImport && <Dialog title={showImportCustomerForm ? "Novo cliente" : showCustomerPicker ? "Selecionar cliente" : showPortPicker ? "Selecionar porto" : "Nova importação"} className="dialog--wide" onClose={() => { setShowNewImport(false); setImportPort(""); setShowPortPicker(false); setShowCustomerPicker(false); setShowImportCustomerForm(false); setImportCustomerId(""); }}><div hidden={showCustomerPicker || showImportCustomerForm || showPortPicker}><ImportForm reference={nextImportReference(operations)} customers={customers} customerId={importCustomerId} port={importPort} onSelectPort={() => setShowPortPicker(true)} onSelectCustomer={() => setShowCustomerPicker(true)} onNewCustomer={() => setShowImportCustomerForm(true)} onSubmit={createOperation} /></div>{showPortPicker && <PortPickerContent facilities={portFacilities} state={portCatalogState} error={portCatalogError} onRetry={loadPortCatalog} onBack={() => setShowPortPicker(false)} onSelect={(port) => { setImportPort(port); setShowPortPicker(false); }} />}{showCustomerPicker && <CustomerPickerContent customers={customers} onBack={() => setShowCustomerPicker(false)} onNewCustomer={() => { setShowCustomerPicker(false); setShowImportCustomerForm(true); }} onSelect={(id) => { setImportCustomerId(id); setShowCustomerPicker(false); }} />}{showImportCustomerForm && <CustomerForm customer={null} onSubmit={saveImportCustomer} onLookup={lookupCompany} onAddressLookup={lookupAddress} onCancel={() => setShowImportCustomerForm(false)} />}</Dialog>}
+    {showNewImport && <Dialog title={showImportCustomerForm ? "Novo cliente" : showCustomerPicker ? "Selecionar cliente" : showPortPicker ? "Selecionar porto" : "Nova importação"} className="dialog--wide" onClose={() => { setShowNewImport(false); setCreateImportError(""); setImportPort(""); setShowPortPicker(false); setShowCustomerPicker(false); setShowImportCustomerForm(false); setImportCustomerId(""); }}><div hidden={showCustomerPicker || showImportCustomerForm || showPortPicker}><ImportForm creating={creatingImport} error={createImportError} customers={customers} customerId={importCustomerId} port={importPort} onSelectPort={() => setShowPortPicker(true)} onSelectCustomer={() => setShowCustomerPicker(true)} onNewCustomer={() => setShowImportCustomerForm(true)} onSubmit={createOperation} /></div>{showPortPicker && <PortPickerContent facilities={portFacilities} state={portCatalogState} error={portCatalogError} onRetry={loadPortCatalog} onBack={() => setShowPortPicker(false)} onSelect={(port) => { setImportPort(port); setShowPortPicker(false); }} />}{showCustomerPicker && <CustomerPickerContent customers={customers} onBack={() => setShowCustomerPicker(false)} onNewCustomer={() => { setShowCustomerPicker(false); setShowImportCustomerForm(true); }} onSelect={(id) => { setImportCustomerId(id); setShowCustomerPicker(false); }} />}{showImportCustomerForm && <CustomerForm customer={null} onSubmit={saveImportCustomer} onLookup={lookupCompany} onAddressLookup={lookupAddress} onCancel={() => setShowImportCustomerForm(false)} />}</Dialog>}
     {showNewItem && <Dialog title={editingItem ? "Editar produto" : "Adicionar produto"} onClose={() => { setEditingItem(null); setShowNewItem(false); }}><ItemForm item={editingItem} onSubmit={saveItem} token={session.token} /></Dialog>}
     {showProductSheetImport && <Dialog title="Importar produtos por planilha" className="dialog--wide" onClose={() => setShowProductSheetImport(false)}><ProductSheetImportDialogContent onConfirm={importProducts} /></Dialog>}
     {itemToRemove && <Dialog title="Remover produto" onClose={() => setItemToRemove(null)}><div className="confirmation-dialog"><p>Remover <strong>{itemToRemove.name}</strong> desta importação? Os cálculos de rateio e custo total serão atualizados.</p><div><button className="button button--secondary" type="button" onClick={() => setItemToRemove(null)}>Cancelar</button><button className="button button--danger" type="button" onClick={removeItem}><Trash2 size={17} /> Remover produto</button></div></div></Dialog>}
@@ -577,12 +588,13 @@ function ProductSheetImportDialogContent({ onConfirm }: { onConfirm: (items: Imp
   const [reading, setReading] = useState(false);
   return <div className="product-sheet-dialog" aria-busy={reading}><ProductSheetPicker onProductsChange={setItems} onReadingChange={setReading} /><div className="product-sheet-dialog__actions"><Button className="button button--primary" type="button" disabled={reading || !items.length} onClick={() => { if (!reading) onConfirm(items); }}><Upload size={17} /><span>{`Incluir ${items.length} ${items.length === 1 ? "produto" : "produtos"}`}</span></Button></div></div>;
 }
-function ImportForm({ reference, customers, customerId, port, onSelectPort, onSelectCustomer, onNewCustomer, onSubmit }: { reference: string; customers: Customer[]; customerId: string; port: string; onSelectPort: () => void; onSelectCustomer: () => void; onNewCustomer: () => void; onSubmit: (event: FormEvent<HTMLFormElement>, importedItems: ImportedProduct[]) => void }) {
+function ImportForm({ creating, error, customers, customerId, port, onSelectPort, onSelectCustomer, onNewCustomer, onSubmit }: { creating: boolean; error: string; customers: Customer[]; customerId: string; port: string; onSelectPort: () => void; onSelectCustomer: () => void; onNewCustomer: () => void; onSubmit: (event: FormEvent<HTMLFormElement>, importedItems: ImportedProduct[]) => void }) {
   const customer = customers.find((item) => item.id === customerId);
   const [importedItems, setImportedItems] = useState<ImportedProduct[]>([]);
   const [reading, setReading] = useState(false);
-  return <form className="import-form-container" aria-busy={reading} onSubmit={(event) => { if (reading) { event.preventDefault(); return; } onSubmit(event, importedItems); }}>
-    <fieldset className="form-grid import-form" disabled={reading} aria-label="Dados da importação">
+  const busy = reading || creating;
+  return <form className="import-form-container" aria-busy={busy} onSubmit={(event) => { if (busy) { event.preventDefault(); return; } onSubmit(event, importedItems); }}>
+    <fieldset className="form-grid import-form" disabled={busy} aria-label="Dados da importação">
     <div className="field full">
       <span id="import-customer-label">Cliente</span>
       <input name="customerId" value={customerId} type="hidden" readOnly />
@@ -591,16 +603,16 @@ function ImportForm({ reference, customers, customerId, port, onSelectPort, onSe
         <Button className="button button--secondary import-form__new-customer" onClick={onNewCustomer}><Plus size={15} /> Novo cliente</Button>
       </div>
     </div>
-    <label className="field"><span>Referência</span><Input name="reference" value={reference} readOnly aria-label="Referência automática" /></label>
     <label className="field"><span data-localized>ETA</span><DatePicker name="eta" label="ETA" required /></label>
-    <div className="field full">
+    <div className="field">
       <span id="import-port-label">Porto de destino</span>
       <input type="hidden" name="port" value={port} readOnly />
       <Button className="customer-picker__trigger" aria-labelledby="import-port-label" aria-describedby="import-port-help" onClick={onSelectPort}><span data-localized>{port || translateUiText(activeLocale, "Porto a definir")}</span><ChevronRight size={17} /></Button>
       <small id="import-port-help" className="muted">Pode ser definido depois nos detalhes da importação.</small>
     </div>
     <div className="full"><ProductSheetPicker onProductsChange={setImportedItems} onReadingChange={setReading} /></div>
-    <Button className="button button--primary form-submit" type="submit" disabled={reading}>{reading ? <Spinner /> : <Plus size={18} />}<span data-localized>{translateUiText(activeLocale, reading ? "Lendo planilha…" : "Criar importação")}</span></Button>
+    {error && <p className="field-error full" role="alert">{error}</p>}
+    <Button className="button button--primary form-submit" type="submit" disabled={busy}>{busy ? <Spinner /> : <Plus size={18} />}<span data-localized>{translateUiText(activeLocale, creating ? "Criando importação…" : reading ? "Lendo planilha…" : "Criar importação")}</span></Button>
     </fieldset>
   </form>;
 }

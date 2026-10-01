@@ -1,11 +1,12 @@
 import cors from "@fastify/cors";
+import { allocateImportReference } from "./import-reference.js";
 import Fastify from "fastify";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import fastifyMultipart from "@fastify/multipart";
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { Pool } from "pg";
 import { getNcmCatalog, searchNcms, suggestNcms } from "./ncm.js";
-import { calculateImport, nextImportReference, hasApprovedBudget, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
+import { calculateImport, hasApprovedBudget, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
 await app.register(cors, { origin: true });
@@ -26,7 +27,7 @@ const databaseUrl = process.env.DATABASE_URL;
 let database: Pool | null = null;
 const userFromRow = (row: Record<string, unknown>): User => ({ id: String(row.id), name: String(row.name), email: String(row.email), role: row.role === "admin" ? "admin" : "operator", passwordHash: String(row.password_hash), mustChangePassword: Boolean(row.must_change_password), createdAt: new Date(String(row.created_at)).toISOString(), phone: typeof row.phone === "string" ? row.phone : undefined, jobTitle: typeof row.job_title === "string" ? row.job_title : undefined, avatarUrl: typeof row.avatar_url === "string" ? row.avatar_url : undefined, preferredLocale: row.preferred_locale === "en-US" || row.preferred_locale === "zh-CN" ? row.preferred_locale : "pt-BR" });
 async function persistUser(user: User) { if (!database) throw new Error("Banco de dados de usuários não está disponível."); await database.query(`INSERT INTO app_users (id, name, email, role, password_hash, must_change_password, created_at, phone, job_title, avatar_url, preferred_locale) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, role=EXCLUDED.role, password_hash=EXCLUDED.password_hash, must_change_password=EXCLUDED.must_change_password, phone=EXCLUDED.phone, job_title=EXCLUDED.job_title, avatar_url=EXCLUDED.avatar_url, preferred_locale=EXCLUDED.preferred_locale`, [user.id, user.name, user.email, user.role, user.passwordHash, user.mustChangePassword, user.createdAt, user.phone ?? null, user.jobTitle ?? null, user.avatarUrl ?? null, user.preferredLocale]); }
-async function initializeUserStore() { if (!databaseUrl) throw new Error("DATABASE_URL é obrigatória para iniciar a API. Configure o PostgreSQL antes de executar o serviço."); database = new Pool({ connectionString: databaseUrl }); await database.query(`CREATE TABLE IF NOT EXISTS app_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, role TEXT NOT NULL CHECK (role IN ('admin','operator')), password_hash TEXT NOT NULL, must_change_password BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), phone TEXT, job_title TEXT, avatar_url TEXT, preferred_locale TEXT NOT NULL DEFAULT 'pt-BR' CHECK (preferred_locale IN ('pt-BR','en-US','zh-CN')))`); await database.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS preferred_locale TEXT NOT NULL DEFAULT 'pt-BR'`); await database.query(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_by TEXT)`); const result = await database.query("SELECT id, name, email, role, password_hash, must_change_password, created_at, phone, job_title, avatar_url, preferred_locale FROM app_users"); if (result.rows.length === 0) { users.set(initialAdmin.id, initialAdmin); await persistUser(initialAdmin); return; } result.rows.forEach((row) => { const user = userFromRow(row); users.set(user.id, user); }); }
+async function initializeUserStore() { if (!databaseUrl) throw new Error("DATABASE_URL é obrigatória para iniciar a API. Configure o PostgreSQL antes de executar o serviço."); database = new Pool({ connectionString: databaseUrl }); await database.query(`CREATE TABLE IF NOT EXISTS app_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL UNIQUE, role TEXT NOT NULL CHECK (role IN ('admin','operator')), password_hash TEXT NOT NULL, must_change_password BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), phone TEXT, job_title TEXT, avatar_url TEXT, preferred_locale TEXT NOT NULL DEFAULT 'pt-BR' CHECK (preferred_locale IN ('pt-BR','en-US','zh-CN')))`); await database.query(`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS preferred_locale TEXT NOT NULL DEFAULT 'pt-BR'`); await database.query(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_by TEXT)`); await database.query(`CREATE TABLE IF NOT EXISTS import_reference_counters (year INTEGER PRIMARY KEY, sequence BIGINT NOT NULL CHECK (sequence > 0))`); const result = await database.query("SELECT id, name, email, role, password_hash, must_change_password, created_at, phone, job_title, avatar_url, preferred_locale FROM app_users"); if (result.rows.length === 0) { users.set(initialAdmin.id, initialAdmin); await persistUser(initialAdmin); return; } result.rows.forEach((row) => { const user = userFromRow(row); users.set(user.id, user); }); }
 const authSecret = process.env.AUTH_SECRET || process.env.ADMIN_INITIAL_PASSWORD || "exporta-brasil-local-session-secret";
 const sessionDurationMs = 8 * 60 * 60 * 1000;
 const sessionSignature = (payload: string) => createHmac("sha256", authSecret).update(payload).digest("base64url");
@@ -390,10 +391,17 @@ app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) =
   return { ...operation, summary: calculateImport(operation) };
 });
 
-app.post<{ Body: Pick<ImportOperation, "customer" | "customerId" | "eta"> & Partial<Pick<ImportOperation, "port">> }>("/api/imports", async (request, reply) => {
+app.post<{ Body: Pick<ImportOperation, "customer" | "customerId" | "eta"> & Partial<Pick<ImportOperation, "port">> & { existingReferences?: string[] } }>("/api/imports", async (request, reply) => {
+  const user = sessionUser(request.headers.authorization);
+  if (!user) return reply.code(401).send({ message: "Sessão inválida." });
+  if (!database) return reply.code(503).send({ message: "Banco de dados indisponível." });
+  if (typeof request.body.customer !== "string" || !request.body.customer.trim() || typeof request.body.eta !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(request.body.eta)) return reply.code(400).send({ message: "Informe cliente e data de chegada." });
+  // Carry forward references from operations created locally before API allocation.
+  const existingReferences = Array.isArray(request.body.existingReferences) ? request.body.existingReferences.filter((reference): reference is string => typeof reference === "string").map((reference) => ({ reference })) : [];
+  const reference = await allocateImportReference(database, [...imports.values(), ...existingReferences]);
   const id = `imp-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
-  const operation: ImportOperation = { id, reference: nextImportReference(imports.values()), customer: request.body.customer, customerId: request.body.customerId, port: request.body.port ?? "", container: "", eta: request.body.eta, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
+  const operation: ImportOperation = { id, reference, customer: request.body.customer, customerId: request.body.customerId, assigneeId: user.id, assigneeName: user.name, port: request.body.port ?? "", container: "", eta: request.body.eta, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
   imports.set(id, operation);
   return reply.code(201).send({ ...operation, summary: calculateImport(operation) });
 });
