@@ -25,6 +25,6 @@ export function NumberInput({ value, defaultValue, onValueChange, currency, suff
     {unit && <span className="formatted-number__unit" aria-hidden="true">{unit}</span>}
     <NumericFormat placeholder={currency ? new Intl.NumberFormat(locale, { minimumFractionDigits: 2 }).format(0) : undefined} spellCheck={false} {...props} customInput={Input} getInputRef={input} value={draft} valueIsNumericString thousandSeparator={group} decimalSeparator={decimal} allowedDecimalSeparators={[decimal]} decimalScale={decimalScale} fixedDecimalScale={Boolean(currency)} allowNegative={false} allowLeadingZeros={false} inputMode={decimalScale ? "decimal" : "numeric"} onValueChange={({ value: raw, floatValue }, { source }) => { if (source !== "event") return; setDraft(raw); onValueChange?.(floatValue ?? 0); }} />
     {suffix && <span className="formatted-number__unit" aria-hidden="true">{suffix}</span>}
-    {name && <input type="hidden" name={name} value={draft} disabled={props.disabled} />}
+    {name && <input autoComplete="off" type="hidden" name={name} value={draft} disabled={props.disabled} />}
   </div>;
 }
