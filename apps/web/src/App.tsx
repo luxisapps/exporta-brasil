@@ -27,6 +27,7 @@ import { NumberInput } from "./components/ui/number-input";
 import { Input } from "./components/ui/input";
 import { Button } from "./components/ui/button";
 import { Pagination } from "./components/ui/pagination";
+import { Spinner } from "./components/ui/spinner";
 import { LocaleContext, useLocale } from "./lib/locale-context";
 import { localDateTimeValue } from "./lib/form-values";
 
@@ -527,25 +528,27 @@ function Summary({ label, value, detail, emphasis }: { label: string; value: str
 function Metric({ icon, label, value, detail, tone }: { icon: ReactNode; label: string; value: string; detail: string; tone: string }) { return <section className={`metric-card tone-${tone}`}><span className="metric-icon">{icon}</span><p>{label}</p><strong>{value}</strong><small>{detail}</small></section>; }
 function StatusBadge({ status }: { status: ImportStatus }) { const meta = importStatusMeta[status]; return <span className={`status status--${meta.tone}`}>{meta.label}</span>; }
 function Dialog({ title, onClose, children, className }: { title: string; onClose: () => void; children: ReactNode; className?: string }) { const locale = useLocale(); return <DialogRoot open onOpenChange={(open) => { if (!open) onClose(); }}><DialogContent className={className} aria-describedby={undefined}><header><DialogTitle asChild><h2 data-localized>{translateUiText(locale, title)}</h2></DialogTitle><DialogClose asChild><button className="icon-button" aria-label="Fechar"><X size={20} /></button></DialogClose></header>{children}</DialogContent></DialogRoot>; }
-function ProductSheetPicker({ onProductsChange }: { onProductsChange: (items: ImportedProduct[]) => void }) {
+function ProductSheetPicker({ onProductsChange, onReadingChange }: { onProductsChange: (items: ImportedProduct[]) => void; onReadingChange: (reading: boolean) => void }) {
+  const locale = useLocale();
   const [fileName, setFileName] = useState("");
   const [items, setItems] = useState<ImportedProduct[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [reading, setReading] = useState(false);
   const readFile = async (file?: File) => {
-    if (!file) return;
-    setReading(true); setError(""); setWarnings([]);
+    if (!file || reading) return;
+    setReading(true); onReadingChange(true); setError(""); setWarnings([]); setItems([]); setFileName(""); onProductsChange([]);
     try {
       const result = await parseProductSheet(file);
       setItems(result.items); setFileName(file.name); setWarnings(result.warnings); onProductsChange(result.items);
     } catch (reason) {
       setItems([]); setFileName(""); onProductsChange([]);
       setError(reason instanceof Error ? reason.message : "Não foi possível ler a planilha.");
-    } finally { setReading(false); }
+    } finally { setReading(false); onReadingChange(false); }
   };
   return <section className="product-sheet-importer" aria-busy={reading}>
-    <div className="product-sheet-importer__intro"><div><strong>Produtos por planilha</strong><p>Envie XLSX, XLS ou CSV. As colunas Produto e Quantidade são obrigatórias; NCM, valores em USD, peso, II e IPI são opcionais.</p></div><label className="button button--secondary" htmlFor="product-sheet-input"><Upload size={17} /> {reading ? "Lendo planilha…" : "Selecionar planilha"}<input id="product-sheet-input" className="sr-only" type="file" disabled={reading} accept=".xlsx,.xls,.csv" onChange={(event) => { void readFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label></div>
+    <div className="product-sheet-importer__intro"><div><strong>Produtos por planilha</strong><p>Envie XLSX, XLS ou CSV. As colunas Produto e Quantidade são obrigatórias; NCM, valores em USD, peso, II e IPI são opcionais.</p></div><label className="button button--secondary" aria-disabled={reading} htmlFor="product-sheet-input">{reading ? <Spinner /> : <Upload size={17} />} <span data-localized>{translateUiText(locale, reading ? "Lendo planilha…" : "Selecionar planilha")}</span><input id="product-sheet-input" className="sr-only" type="file" disabled={reading} accept=".xlsx,.xls,.csv" onChange={(event) => { void readFile(event.target.files?.[0]); event.currentTarget.value = ""; }} /></label></div>
+    {reading && <div className="product-sheet-importer__loading"><div className="product-sheet-importer__loading-status" role="status" aria-live="polite"><Spinner /><div><strong>Lendo planilha…</strong><p>Extraindo os produtos e valores. Aguarde para continuar.</p></div></div><div className="table-scroll" aria-hidden="true"><table><thead><tr><th>Produto</th><th>Qtd.</th><th>NCM</th><th>USD unit.</th></tr></thead><tbody><TableSkeletonRows columns={4} rows={3} /></tbody></table></div></div>}
     {error && <p className="product-sheet-importer__error" role="alert">{error}</p>}
     {warnings.length > 0 && <p className="product-sheet-importer__warning" role="status">{warnings.length} linha(s) sem quantidade válida foram ignoradas.</p>}
     {items.length > 0 && <div className="product-sheet-importer__preview"><div><strong>{fileName}</strong><span>{items.length} produto(s) encontrados</span></div><div className="table-scroll"><table><thead><tr><th>Produto</th><th>Qtd.</th><th>NCM</th><th>USD unit.</th></tr></thead><tbody>{items.slice(0, 5).map((item, index) => <tr key={`${item.name}-${index}`}><td><strong>{item.name}</strong></td><td>{item.quantity}</td><td>{item.ncm || "—"}</td><td>{item.unitPriceUsd ? new Intl.NumberFormat(activeLocale, { style: "currency", currency: "USD" }).format(item.unitPriceUsd) : "—"}</td></tr>)}</tbody></table></div>{items.length > 5 && <small>Mostrando os primeiros 5 itens da planilha.</small>}</div>}
@@ -553,12 +556,15 @@ function ProductSheetPicker({ onProductsChange }: { onProductsChange: (items: Im
 }
 function ProductSheetImportDialogContent({ onConfirm }: { onConfirm: (items: ImportedProduct[]) => void }) {
   const [items, setItems] = useState<ImportedProduct[]>([]);
-  return <div className="product-sheet-dialog"><ProductSheetPicker onProductsChange={setItems} /><div className="product-sheet-dialog__actions"><button className="button button--primary" type="button" disabled={!items.length} onClick={() => onConfirm(items)}><Upload size={17} /><span>{`Incluir ${items.length} ${items.length === 1 ? "produto" : "produtos"}`}</span></button></div></div>;
+  const [reading, setReading] = useState(false);
+  return <div className="product-sheet-dialog" aria-busy={reading}><ProductSheetPicker onProductsChange={setItems} onReadingChange={setReading} /><div className="product-sheet-dialog__actions"><Button className="button button--primary" type="button" disabled={reading || !items.length} onClick={() => { if (!reading) onConfirm(items); }}><Upload size={17} /><span>{`Incluir ${items.length} ${items.length === 1 ? "produto" : "produtos"}`}</span></Button></div></div>;
 }
 function ImportForm({ reference, customers, customerId, port, onSelectPort, onSelectCustomer, onNewCustomer, onSubmit }: { reference: string; customers: Customer[]; customerId: string; port: string; onSelectPort: () => void; onSelectCustomer: () => void; onNewCustomer: () => void; onSubmit: (event: FormEvent<HTMLFormElement>, importedItems: ImportedProduct[]) => void }) {
   const customer = customers.find((item) => item.id === customerId);
   const [importedItems, setImportedItems] = useState<ImportedProduct[]>([]);
-  return <form className="form-grid import-form" onSubmit={(event) => onSubmit(event, importedItems)}>
+  const [reading, setReading] = useState(false);
+  return <form className="import-form-container" aria-busy={reading} onSubmit={(event) => { if (reading) { event.preventDefault(); return; } onSubmit(event, importedItems); }}>
+    <fieldset className="form-grid import-form" disabled={reading} aria-label="Dados da importação">
     <div className="field full">
       <span id="import-customer-label">Cliente</span>
       <input name="customerId" value={customerId} type="hidden" readOnly />
@@ -576,8 +582,9 @@ function ImportForm({ reference, customers, customerId, port, onSelectPort, onSe
       <small id="import-port-help" className="muted">Pode ser definido depois nos detalhes da importação.</small>
     </div>
     <label className="field"><span>ETA</span><DatePicker name="eta" label="ETA" required /></label>
-    <div className="full"><ProductSheetPicker onProductsChange={setImportedItems} /></div>
-    <Button className="button button--primary form-submit" type="submit"><Plus size={18} /> Criar importação</Button>
+    <div className="full"><ProductSheetPicker onProductsChange={setImportedItems} onReadingChange={setReading} /></div>
+    <Button className="button button--primary form-submit" type="submit" disabled={reading}>{reading ? <Spinner /> : <Plus size={18} />}<span data-localized>{translateUiText(activeLocale, reading ? "Lendo planilha…" : "Criar importação")}</span></Button>
+    </fieldset>
   </form>;
 }
 

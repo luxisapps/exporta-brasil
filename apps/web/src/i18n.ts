@@ -191,3 +191,8 @@ Object.assign(uiText, {
   "Anterior": { "en-US": "Previous", "zh-CN": "上一页" },
   "Próxima": { "en-US": "Next", "zh-CN": "下一页" }
 });
+
+Object.assign(uiText, {
+ "Extraindo os produtos e valores. Aguarde para continuar.": { "en-US": "Extracting products and prices. Please wait to continue.", "zh-CN": "正在提取产品和价格，请等待完成。" },
+ "Dados da importação": { "en-US": "Import information", "zh-CN": "进口信息" }
+});
