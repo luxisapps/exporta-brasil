@@ -273,6 +273,12 @@ Object.assign(uiText, {
     "zh-CN": "FOB：从高到低"
   },
   "Ex.: Conferir invoice antes do registro": { "en-US": "E.g.: Check invoice before registration", "zh-CN": "例如：登记前核对发票" },
+  "Editar pendência": { "en-US": "Edit task", "zh-CN": "编辑待办" },
+  "Excluir pendência": { "en-US": "Delete task", "zh-CN": "删除待办" },
+  "Deseja excluir esta pendência?": { "en-US": "Delete this task?", "zh-CN": "确定删除此待办？" },
+  "Nenhuma pendência cadastrada.": { "en-US": "No tasks yet.", "zh-CN": "暂无待办。" },
+  "Pendência atualizada": { "en-US": "Task updated", "zh-CN": "待办已更新" },
+  "Pendência excluída": { "en-US": "Task deleted", "zh-CN": "待办已删除" },
   "Menor FOB": {
     "en-US": "FOB: lowest first",
     "zh-CN": "FOB：从低到高"

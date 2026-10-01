@@ -361,6 +361,12 @@ h1, h2, p { margin: 0; } small { display: block; }
 .task-assignee { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
 .task-assignee .user-avatar,.task-assignee .avatar { width:24px; height:24px; flex:0 0 24px; font-size:9px; }
 .task-assignee__skeleton { width:120px; height:24px; }
+.task-actions { display:flex; align-items:center; gap:8px; }
+.task-actions b { margin-right:8px; }
+.operation-tasks .task-actions button { width:44px; height:44px; }
+.operation-tasks .task-actions .table-action--danger { color:#fda4af; }
+.tasks-empty { padding:20px 7px; color:#9aafc8; font-size:13px; }
+@media (max-width:639px) { .operation-tasks>div { grid-template-columns:27px minmax(0,1fr); } .task-actions { grid-column:2; justify-content:flex-end; } }
 .products-toolbar .text-button { min-height:44px; white-space:nowrap; }
 .products-pagination { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:14px 20px; border-top:1px solid rgba(148,163,184,.11); color:#9aafc8; font-size:12px; }
 .products-pagination .timeline-pagination { margin:0; }
