@@ -114,9 +114,12 @@ export function calculateImport(operation: Pick<ImportOperation, "items" | "exch
     const pis = itemFob * rate(item, budget, "pis_import", 0) / 100;
     const cofins = itemFob * rate(item, budget, "cofins_import", 0) / 100;
     const totalCost = itemFob + allocatedExpenses + ii + ipi + pis + cofins;
-    return { ...item, itemFob:round(itemFob), allocatedExpenses:round(allocatedExpenses), ii:round(ii), ipi:round(ipi), pis:round(pis), cofins:round(cofins), totalCost:round(totalCost), unitCost:item.quantity === 0 ? 0 : round(totalCost / item.quantity) };
+    return { ...item, itemFob:round(itemFob), allocatedExpenses:round(allocatedExpenses), ii:round(ii), ipi:round(ipi), pis:round(pis), cofins:round(cofins), taxes:round(ii + ipi + pis + cofins), totalCost:round(totalCost), unitCost:item.quantity === 0 ? 0 : round(totalCost / item.quantity) };
   });
   const taxes = items.reduce((total, item) => total + item.ii + item.ipi + item.pis + item.cofins, 0);
-  return { budget, exchangeRate, fobBrl:round(fobBrl), totalWeight:round(totalWeight), totalVolume:round(totalVolume), baseExpenses:round(baseExpenses), taxes:round(taxes), totalCost:round(items.reduce((total, item) => total + item.totalCost, 0)), items };
+  const totalCost = round(fobBrl + baseExpenses + taxes);
+  const marginRate = budget?.marginRate ?? 0;
+  const suggestedSaleTotal = marginRate >= 0 && marginRate < 100 ? round(totalCost / (1 - marginRate / 100)) : null;
+  return { budget, exchangeRate, fobBrl:round(fobBrl), totalWeight:round(totalWeight), totalVolume:round(totalVolume), baseExpenses:round(baseExpenses), taxes:round(taxes), totalCost, suggestedSaleTotal, items };
 }
 export function calculateActualExpenses(operation: Pick<ImportOperation, "actualExpenses" | "exchangeRate" | "budgets">) { const budget = activeBudget(operation); const rateValue = budget?.exchangeRate ?? operation.exchangeRate; return round((operation.actualExpenses ?? []).reduce((sum, expense) => sum + amountBrl(expense, rateValue), 0)); }
