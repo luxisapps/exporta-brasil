@@ -9,6 +9,7 @@ import { Pool } from "pg";
 import { getNcmCatalog, searchNcms, suggestNcms } from "./ncm.js";
 import { canWriteSetting, manualTaxRates } from "./tax-settings.js";
 import { parseUserEdit, removesLastAdmin } from "./user-edit.js";
+import { registerNotifications } from "./notifications.js";
 import { calculateImport, hasApprovedBudget, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
@@ -480,4 +481,5 @@ app.patch<{ Params: { id: string }; Body: Partial<Pick<ImportOperation, "contain
 });
 
 await initializeUserStore();
+await registerNotifications(app, database!, sessionUser);
 await app.listen({ port: Number(process.env.PORT || 3171), host: "0.0.0.0" });

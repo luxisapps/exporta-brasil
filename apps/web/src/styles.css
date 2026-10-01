@@ -387,3 +387,35 @@ h1, h2, p { margin: 0; } small { display: block; }
 .products-completeness-summary { padding:12px 20px; margin:0; color:#b8c9de; font-size:12px; border-bottom:1px solid rgba(148,163,184,.11); }
 .products-list td .product-missing-data { display:flex; align-items:flex-start; gap:6px; max-width:350px; color:#f6d58c; line-height:1.5; white-space:normal; }
 .product-missing-data svg { flex:0 0 14px; margin-top:2px; }
+.notifications-panel { width: min(420px, calc(100vw - 24px)); padding: 0; overflow: hidden; border: 1px solid #293443; background: #0c121bf5; backdrop-filter: blur(24px); box-shadow: 0 20px 70px #0009; border-radius: 16px; }
+.notifications-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; border-bottom: 1px solid #ffffff12; }
+.notifications-heading strong { display: block; font-size: 17px; }
+.notifications-heading small { display: block; margin-top: 6px; color: #a4b4c7; font-size: 12px; }
+.notifications-list { max-height: min(560px, 65dvh); overflow-y: auto; overscroll-behavior: contain; }
+.notification-item.shadcn-button { width: 100%; display: flex; text-align: left; justify-content: flex-start; align-items: flex-start; white-space: normal; gap: 12px; padding: 17px 20px; border-radius: 0; height: auto; border: 0; border-bottom: 1px solid #ffffff0c; background: transparent; color: #e6edf7; }
+.notification-item:hover { background: #ffffff08; }
+.notification-item.is-unread { background: #3876eb0b; }
+.notification-item__dot { width: 7px; height: 7px; flex-shrink: 0; margin-top: 6px; border-radius: 50%; background: transparent; }
+.is-unread .notification-item__dot { background: #6ba5ff; }
+.is-unread.is-critical .notification-item__dot { background: #fb8686; }
+.notification-item__body { display: grid; gap: 6px; min-width: 0; }
+.notification-item__body strong { font-size: 14px; line-height: 1.4; font-weight: 600; }
+.notification-item__body > span { color: #c1ccda; font-size: 13px; overflow-wrap: anywhere; }
+.notification-item__body small { color: #96a8bd; font-size: 11px; line-height: 1.5; }
+.notification-item__body small:first-child { color: #8ab6fc; font-weight: 600; }
+.notification-count { position: absolute; top: -4px; right: -6px; min-width: 18px; height: 18px; display: grid; place-items: center; padding: 0 4px; border-radius: 10px; font-size: 10px; color: #fff; background: #326be3; border: 2px solid #0b1018; }
+.notifications-empty { padding: 42px 28px; display: grid; justify-items: center; text-align: center; gap: 12px; color: #a7b7ca; }
+.notifications-empty strong { color: #edf2fa; }
+.notifications-empty p { margin: 0; font-size: 13px; line-height: 1.6; }
+.notification-skeleton { padding: 20px; display: grid; gap: 12px; }
+.notification-skeleton span { height: 14px; width: 90%; background: #ffffff0a; border-radius: 5px; animation: notification-loading 1.5s ease-in-out infinite alternate; }
+.notification-skeleton span:first-child { width: 40%; }.notification-skeleton span:last-child { width: 65%; }
+.notifications-more { width: 100%; padding: 15px; color: #8ab6fc; background: #ffffff04; border-top: 1px solid #ffffff12; border-radius: 0; }
+.notifications-error { padding: 16px; display: flex; flex-wrap: wrap; gap: 10px; color: #ffc0b5; font-size: 12px; }
+.operation-sync-gate { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; background: #070b12ed; }.operation-sync-gate > div { width: min(440px, 90vw); padding: 24px; }.operation-sync-gate p { line-height: 1.6; }
+.operation-sync-error { padding: 12px 24px; display: flex; gap: 16px; align-items: center; background: #3a211b; color: #ffe1d8; font-size: 13px; }
+.operation-sync-saving { position: fixed; bottom: 24px; right: 24px; z-index: 100; display: flex; gap: 8px; align-items: center; border-radius: 12px; background: #101823; border: 1px solid #344053; padding: 10px 14px; font-size: 12px; }
+#tasks, #documents, #timeline { scroll-margin-top: 100px; }
+@keyframes notification-loading { to { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .notification-skeleton span { animation: none; } }
+@media (max-width: 640px) { .operation-sync-saving { bottom: 80px; right: 16px; }.notifications-heading { padding: 16px; }.notification-item.shadcn-button { padding: 16px; } }
