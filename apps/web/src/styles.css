@@ -477,3 +477,17 @@ h1, h2, p { margin: 0; } small { display: block; }
 .dashboard-page .metric-card .metric-detail { grid-column:1/-1; grid-row:4; align-self:end; margin:0; font-size:11px; }
 @media (max-width:1199px) { .dashboard-page .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:575px) { .dashboard-page .metric-grid { grid-template-columns:1fr; } .dashboard-page .metric-card > strong { font-size:27px; } }
+
+.financial-workspace .budget-assumptions { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; margin-bottom:14px; }
+.budget-readouts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0 0 18px; }
+.budget-readouts .financial-readout { align-content:start; padding:14px; }
+@media (max-width:767px) { .financial-workspace .budget-assumptions,.budget-readouts { grid-template-columns:1fr; } }
+
+.budget-expenses-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:22px; }
+.budget-expenses-heading h3 { margin:0; font-size:14px; font-weight:600; }
+.budget-expenses-heading > div { display:grid; gap:4px; text-align:right; }
+.budget-expenses-heading > div > span { color:#9dadc1; font-size:11px; }
+.budget-expenses-heading .money-amount.money-amount { font-size:14px; font-weight:600; }
+.budget-expenses-heading + .expense-list { margin-top:12px; }
+.budget-total-explanation { max-width:42ch; color:#9dadc1; font-size:12px; line-height:1.5; }
+@media (max-width:575px) { .budget-expenses-heading { align-items:start; flex-direction:column; } .budget-expenses-heading > div { text-align:left; } }
