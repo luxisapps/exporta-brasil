@@ -2,11 +2,11 @@ import { netWeight, productFobUsd } from "@exporta/domain";
 import type { ImportExpense, ImportItem } from "@exporta/domain";
 
 export type ProductDataFilter = "all" | "incomplete" | "complete";
-export type MissingProductField = "name" | "ncm" | "quantity" | "price" | "weight" | "volume" | "ii" | "ipi";
+export type MissingProductField = "name" | "ncm" | "quantity" | "price" | "weight" | "volume" | "ii" | "ipi" | "ipi_sale";
 const positive = (value?: number) => typeof value === "number" && Number.isFinite(value) && value > 0;
 const validRate = (value: number) => Number.isFinite(value) && value >= 0;
 
-export function missingProductFields(item: ImportItem, expenses: ImportExpense[] = []): MissingProductField[] {
+export function missingProductFields(item: ImportItem, expenses: ImportExpense[] = [], requireProductRates = false): MissingProductField[] {
   const missing: MissingProductField[] = [];
   if (!item.name?.trim() || /\p{Script=Han}/u.test(item.name)) missing.push("name");
   if (!/^\d{4}\.?\d{2}\.?\d{2}$/.test(item.ncm?.trim() ?? "")) missing.push("ncm");
@@ -14,6 +14,7 @@ export function missingProductFields(item: ImportItem, expenses: ImportExpense[]
   if (!positive(item.pautaUsdPerKg === undefined ? item.unitPriceUsd : productFobUsd(item))) missing.push("price");
   if (!validRate(item.iiRate)) missing.push("ii");
   if (!validRate(item.ipiRate)) missing.push("ipi");
+  if (requireProductRates) { for (const code of ["ii", "ipi", "ipi_sale"] as const) if (!item.taxRates?.some(rate => rate.code === code && validRate(rate.rate)) && !((code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0) > 0) && !missing.includes(code)) missing.push(code); }
   const needsWeight = expenses.some((expense) => expense.amount > 0 && (expense.allocationMethod === "weight" || ["siscomex", "afrmm"].includes(expense.kind ?? "")));
   const needsVolume = expenses.some((expense) => expense.amount > 0 && expense.allocationMethod === "volume");
   const weight = netWeight(item);
@@ -23,6 +24,6 @@ export function missingProductFields(item: ImportItem, expenses: ImportExpense[]
   return missing;
 }
 
-export function matchesProductDataFilter(item: ImportItem, filter: ProductDataFilter, expenses: ImportExpense[] = []) {
-  return filter === "all" || (missingProductFields(item, expenses).length > 0) === (filter === "incomplete");
+export function matchesProductDataFilter(item: ImportItem, filter: ProductDataFilter, expenses: ImportExpense[] = [], requireProductRates = false) {
+  return filter === "all" || (missingProductFields(item, expenses, requireProductRates).length > 0) === (filter === "incomplete");
 }

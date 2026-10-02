@@ -9,6 +9,8 @@ export type CustomsChannel = "green" | "yellow" | "red" | "gray";
 export type CustomsSignal = CustomsChannel | "unassigned";
 
 export type TaxRateCode = "ii" | "ipi" | "pis_import" | "cofins_import" | "icms_import" | "siscomex" | "afrmm" | "pis_sale" | "cofins_sale" | "ipi_sale" | "icms_sale" | "csll" | "irpj" | "irpj_additional";
+export const fixedTaxRateCodes: TaxRateCode[] = ["pis_import", "cofins_import", "pis_sale", "cofins_sale", "icms_sale", "csll", "irpj", "irpj_additional"];
+export const productTaxRateCodes: TaxRateCode[] = ["ii", "ipi", "ipi_sale"];
 export type TaxRateSource = "default" | "ncm" | "siscomex" | "manual";
 export type TaxRate = { code: TaxRateCode; rate: number; source: TaxRateSource; overridden?: boolean; updatedAt?: string };
 export type ExpenseAllocationMethod = "fob" | "weight" | "volume" | "quantity" | "fixed";
@@ -18,7 +20,7 @@ export type ImportExpense = { kind?: ExpenseKind; id: string; category: string; 
 export type BudgetStatus = "draft" | "approved" | "superseded";
 export type ShipmentStatus = "not_shipped" | "purchase_confirmed" | "shipped" | "arrived" | "closed";
 /** calculationModel and marginMethod are compatibility metadata; the engine always uses worksheet + markup. */
-export type ImportBudget = { calculationModel?: "legacy" | "worksheet"; priceBasis?: "fob" | "cif"; freightWeightKg?: number; marginMethod?: "sale_margin" | "markup"; id: string; name: string; number: number; status: BudgetStatus; createdAt: string; approvedAt?: string; approvedBy?: string; exchangeRate: number; marginRate: number; taxRates: TaxRate[]; expenses: ImportExpense[]; notes?: string };
+export type ImportBudget = { calculationModel?: "legacy" | "worksheet"; priceBasis?: "fob" | "cif"; freightWeightKg?: number; taxInputPolicy?: "per_product"; marginMethod?: "sale_margin" | "markup"; id: string; name: string; number: number; status: BudgetStatus; createdAt: string; approvedAt?: string; approvedBy?: string; exchangeRate: number; marginRate: number; taxRates: TaxRate[]; expenses: ImportExpense[]; notes?: string };
 
 export type ImportItem = {
   id: string;

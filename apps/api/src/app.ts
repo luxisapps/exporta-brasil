@@ -11,7 +11,7 @@ import { getNcmCatalog, searchNcms, suggestNcms } from "./ncm.js";
 import { canWriteSetting, manualTaxRates, manualProductDefaults } from "./tax-settings.js";
 import { parseUserEdit, removesLastAdmin } from "./user-edit.js";
 import { registerNotifications } from "./notifications.js";
-import { calculateImport, hasApprovedBudget, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
+import { fixedTaxRateCodes, calculateImport, hasApprovedBudget, type Customer, type CustomsSignal, type ImportItem, type ImportOperation, type ImportStatus, type PortFacility, type PortStatus } from "@exporta/domain";
 
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
 await app.register(cors, { origin: true, methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"] });
@@ -341,7 +341,7 @@ app.patch<{ Params: { id: string }; Body: unknown }>("/api/users/:id", async (re
     throw error;
   } finally { client.release(); }
 });
-app.get<{ Params: { key: string } }>("/api/settings/:key", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sess\u00e3o inv\u00e1lida." }); if (!database) return reply.code(503).send({ message: "Banco de dados indispon\u00edvel." }); const result = await database.query("SELECT value, updated_at FROM app_settings WHERE key = $1", [request.params.key]); if (!result.rowCount) return reply.code(404).send({ message: "Parametriza\u00e7\u00e3o ainda n\u00e3o definida." }); return { value: result.rows[0].value, updatedAt: result.rows[0].updated_at }; });
+app.get<{ Params: { key: string } }>("/api/settings/:key", async (request, reply) => { const user = sessionUser(request.headers.authorization); if (!user) return reply.code(401).send({ message: "Sess\u00e3o inv\u00e1lida." }); if (!database) return reply.code(503).send({ message: "Banco de dados indispon\u00edvel." }); const result = await database.query("SELECT value, updated_at FROM app_settings WHERE key = $1", [request.params.key]); if (!result.rowCount) return reply.code(404).send({ message: "Parametriza\u00e7\u00e3o ainda n\u00e3o definida." }); return { value: request.params.key === "tax-rates" && Array.isArray(result.rows[0].value) ? result.rows[0].value.filter((rate: { code: typeof fixedTaxRateCodes[number] }) => fixedTaxRateCodes.includes(rate.code)) : result.rows[0].value, updatedAt: result.rows[0].updated_at }; });
 app.put<{ Params: { key: string }; Body: { value: unknown } }>("/api/settings/:key", async (request, reply) => {
   const user = sessionUser(request.headers.authorization);
   if (!user) return reply.code(401).send({ message: "Sessão inválida." });

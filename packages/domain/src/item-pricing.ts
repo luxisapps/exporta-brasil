@@ -1,4 +1,5 @@
 import { grossWeight, netWeight, productFobUsd } from "./product-valuation.js";
+import { productTaxRateCodes } from "./index.js";
 import type { ImportBudget, ImportExpense, ImportItem, ImportOperation, TaxRateCode } from "./index.js";
 
 export type ItemPricing = {
@@ -14,6 +15,7 @@ const round = (value: number) => Math.round((value + Number.EPSILON) * 100) / 10
 export function effectiveTaxRate(item: ImportItem, budget: ImportBudget | undefined, code: TaxRateCode) {
   const override = item.taxRates?.find((entry) => entry.code === code)?.rate;
   const legacy = code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0;
+  if (productTaxRateCodes.includes(code) && (budget?.taxInputPolicy === "per_product" || budget?.status !== "approved")) return override ?? legacy;
   return override ?? (legacy > 0 ? legacy : budget?.taxRates.find((entry) => entry.code === code)?.rate ?? legacy);
 }
 export function calculateWorksheetImport(operation: Pick<ImportOperation, "items" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "budgets">, budget: ImportBudget) {
@@ -34,6 +36,7 @@ export function calculateWorksheetImport(operation: Pick<ImportOperation, "items
   if (!operation.items.length) warnings.push("Adicione produtos antes de aprovar os custos.");
   if (operation.items.some(item => item.quantity <= 0 || !Number.isFinite(item.quantity) || productFobUsd(item) <= 0 || !Number.isFinite(productFobUsd(item)))) warnings.push("Preencha quantidade e preço positivos em todos os produtos.");
   if (operation.items.some(item => item.sourcePriceBasis === "cif") && !cifInput) warnings.push("A planilha contém valores CIF. Selecione a base CIF antes de concluir o orçamento.");
+  if (budget.taxInputPolicy === "per_product" && operation.items.some(item => productTaxRateCodes.some(code => !item.taxRates?.some(rate => rate.code === code && Number.isFinite(rate.rate) && rate.rate >= 0) && !((code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0) > 0)))) warnings.push("Preencha II, IPI de entrada e IPI de saída em cada produto, incluindo zero quando isento.");
   const eligibleWeight = expenses.some((expense) => expense.amount > 0 && (expense.allocationMethod === "weight" || expense.kind === "siscomex" || expense.kind === "afrmm"));
   if (eligibleWeight && operation.items.some((item) => !(item.netWeightKg && item.netWeightKg > 0))) warnings.push("Preencha o peso líquido total de todos os produtos para completar o rateio por peso.");
   if (expenses.some((expense) => expense.amount > 0 && expense.allocationMethod === "volume") && operation.items.some(item => !(volume(item) > 0))) warnings.push("Preencha o volume dos produtos para completar o rateio por volume.");

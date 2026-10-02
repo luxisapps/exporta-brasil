@@ -66,3 +66,11 @@ test("beta metadata cannot select another engine; all summaries and exports use 
  assert.equal(approved.budgets?.[0].calculationModel,"worksheet");
  assert.equal(approved.budgets?.[0].marginMethod,"markup");
 });
+
+test("per-product variable taxes never inherit defaults and missing values block approval", () => {
+ const next = { ...operation, items: [{ ...operation.items[0], iiRate:0, ipiRate:0, taxRates:[] }], budgets:[{ ...budget, taxInputPolicy:"per_product" as const, taxRates:[{code:"ii" as const,rate:80,source:"default" as const},{code:"ipi" as const,rate:90,source:"default" as const},{code:"ipi_sale" as const,rate:50,source:"default" as const}] }] };
+ const missing = calculateImport(next); assert.equal(missing.items[0].ii,0); assert.equal(missing.items[0].ipi,0); assert.equal(missing.calculationReady,false);
+ assert.throws(()=>approveOperationCosts(next,next.budgets[0],"Admin"));
+ next.items[0].taxRates=["ii","ipi","ipi_sale"].map(code=>({code:code as "ii"|"ipi"|"ipi_sale",rate:0,source:"manual" as const}));
+ assert.equal(calculateImport(next).calculationReady,true);
+});

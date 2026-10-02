@@ -11,6 +11,7 @@ export function validPricingFields(operation: { items: unknown[]; budgets?: unkn
     && option(item.sourcePriceBasis, ["fob", "cif"]))
     && (operation.budgets ?? []).every(budget => record(budget)
       && (budget.freightWeightKg === undefined || finite(budget.freightWeightKg) && budget.freightWeightKg > 0)
+      && option(budget.taxInputPolicy, ["per_product"])
       && option(budget.calculationModel, ["legacy", "worksheet"])
       && option(budget.priceBasis, ["fob", "cif"])
       && option(budget.marginMethod, ["markup", "sale_margin"])

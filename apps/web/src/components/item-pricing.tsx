@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { calculateImport, grossWeight, netWeight, effectiveTaxRate, taxRateLabels, type ImportBudget, type ImportItem, type ItemPricing, type TaxRateCode } from "@exporta/domain";
+import { productTaxRateCodes, calculateImport, grossWeight, netWeight, effectiveTaxRate, taxRateLabels, type ImportBudget, type ImportItem, type ItemPricing, type TaxRateCode } from "@exporta/domain";
 import { FieldSelect, SelectOption } from "./ui/field-select";
 import { NumberInput } from "./ui/number-input";
 import { Button } from "./ui/button";
@@ -16,6 +16,7 @@ function ProductTaxField({ code, item, budget }: { code: TaxRateCode; item: Impo
   const locale = useLocale(), text = (value: string) => translateUiText(locale, value);
   const explicit = item?.taxRates?.find((rate) => rate.code === code), legacy = code === "ii" ? item?.iiRate : code === "ipi" ? item?.ipiRate : undefined;
   const [mode, setMode] = useState(explicit || legacy && legacy > 0 ? "custom" : "inherit");
+  if (productTaxRateCodes.includes(code)) return <div className="product-tax-field" data-localized><span>{text(taxRateLabels[code])}</span><NumberInput name={`tax_${code}`} aria-label={text(taxRateLabels[code])} defaultValue={explicit?.rate ?? (legacy && legacy > 0 ? legacy : undefined)} decimalScale={4} suffix="%" /><small>{text("Preencha por produto; use zero quando isento.")}</small></div>;
   const defaultRate = budget?.taxRates.find((rate) => rate.code === code)?.rate ?? 0;
   return <div className="product-tax-field" data-localized><span>{text(taxRateLabels[code])}</span><FieldSelect label={`${text(taxRateLabels[code])}: ${text("Origem da alíquota")}`} value={mode} onValueChange={setMode}><SelectOption value="inherit">{`${text("Usar parametrização")} (${new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(defaultRate)}%)`}</SelectOption><SelectOption value="custom">{text("Definir no produto")}</SelectOption></FieldSelect>{mode === "custom" && <NumberInput name={`tax_${code}`} aria-label={text(taxRateLabels[code])} min="0" defaultValue={explicit?.rate ?? legacy ?? defaultRate} decimalScale={4} suffix="%" />}</div>;
 }

@@ -1,4 +1,4 @@
-import { taxRateLabels, type TaxRate, type TaxRateCode } from "@exporta/domain";
+import { taxRateLabels, fixedTaxRateCodes, type TaxRate, type TaxRateCode } from "@exporta/domain";
 
 export function canWriteSetting(role: "admin" | "operator", key: string) {
   return role === "admin" || ["tax-rates", "product-defaults"].includes(key);
@@ -6,7 +6,7 @@ export function canWriteSetting(role: "admin" | "operator", key: string) {
 
 export function manualTaxRates(value: unknown, updatedAt = new Date().toISOString()): TaxRate[] | null {
   const codes = Object.keys(taxRateLabels);
-  if (!Array.isArray(value) || value.length !== codes.length) return null;
+  if (!Array.isArray(value) || value.length !== codes.length && value.length !== fixedTaxRateCodes.length) return null;
   const seen = new Set<string>();
   const rates: TaxRate[] = [];
   for (const item of value) {
@@ -14,7 +14,7 @@ export function manualTaxRates(value: unknown, updatedAt = new Date().toISOStrin
     seen.add(item.code);
     rates.push({ code: item.code as TaxRateCode, rate: item.rate, source: "manual", updatedAt });
   }
-  return rates;
+  return fixedTaxRateCodes.every(code => seen.has(code)) ? rates.filter(rate => fixedTaxRateCodes.includes(rate.code)) : null;
 }
 
 export function manualProductDefaults(value: unknown) {
