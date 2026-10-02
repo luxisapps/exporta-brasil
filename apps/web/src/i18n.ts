@@ -531,3 +531,94 @@ Object.assign(uiText, {
 });
 
 Object.assign(uiText, { "Não foi possível salvar. Tente novamente.": { "en-US": "Unable to save. Try again.", "zh-CN": "无法保存，请重试。" } });
+
+Object.assign(uiText, {
+  "Peso líquido e formação do FOB": {
+    "en-US": "Net weight and FOB calculation",
+    "zh-CN": "净重与FOB计算"
+  },
+  "Desconto do peso bruto (%)": {
+    "en-US": "Gross weight deduction (%)",
+    "zh-CN": "毛重扣减比例（%）"
+  },
+  "Peso líquido informado (kg)": {
+    "en-US": "Reported net weight (kg)",
+    "zh-CN": "录入净重（kg）"
+  },
+  "Peso líquido calculado (kg)": {
+    "en-US": "Calculated net weight (kg)",
+    "zh-CN": "计算净重（kg）"
+  },
+  "Peso bruto total (kg)": {
+    "en-US": "Total gross weight (kg)",
+    "zh-CN": "总毛重（kg）"
+  },
+  "Peso líquido total (kg)": {
+    "en-US": "Total net weight (kg)",
+    "zh-CN": "总净重（kg）"
+  },
+  "Pauta (USD/kg)": {
+    "en-US": "Reference value (USD/kg)",
+    "zh-CN": "基准价（美元/kg）"
+  },
+  "Sobra (USD/kg)": {
+    "en-US": "Additional value (USD/kg)",
+    "zh-CN": "附加价（美元/kg）"
+  },
+  "Pauta + sobra (USD/kg)": {
+    "en-US": "Reference + additional value (USD/kg)",
+    "zh-CN": "基准价+附加价（美元/kg）"
+  },
+  "FOB calculado (USD)": {
+    "en-US": "Calculated FOB (USD)",
+    "zh-CN": "计算FOB（美元）"
+  },
+  "Formação dos valores dos produtos": {
+    "en-US": "Product value calculation",
+    "zh-CN": "产品金额计算"
+  },
+  "Do peso bruto ao CFR: valores calculados por produto, antes dos impostos.": {
+    "en-US": "From gross weight to CFR: calculated product amounts before taxes.",
+    "zh-CN": "从毛重到CFR：各产品税前计算金额。"
+  },
+  "Quantidade total": {
+    "en-US": "Total quantity",
+    "zh-CN": "总数量"
+  },
+  "Os valores importados já incluem frete; não some o frete novamente.": {
+    "en-US": "Imported values already include freight; do not add it again.",
+    "zh-CN": "导入金额已包含运费，请勿重复计入。"
+  },
+  "Peso de referência do frete (kg)": {
+    "en-US": "Freight allocation reference weight (kg)",
+    "zh-CN": "运费分摊参考重量（kg）"
+  },
+  "Frete por produto = frete internacional ÷ peso de referência × peso líquido do produto. Deixe vazio para usar a soma dos pesos líquidos.": {
+    "en-US": "Product freight = international freight ÷ reference weight × product net weight. Leave blank to use total net weight.",
+    "zh-CN": "产品运费=国际运费÷参考重量×产品净重。留空则使用总净重。"
+  },
+  "Peso líquido = peso bruto × (1 − desconto / 100). FOB = (pauta + sobra) × peso líquido. Sem pauta, usamos quantidade × preço unitário.": {
+    "en-US": "Net weight = gross weight × (1 − deduction / 100). FOB = (reference + additional value) × net weight. Without a reference value, use quantity × unit price.",
+    "zh-CN": "净重=毛重×（1−扣减比例/100）。FOB=（基准价+附加价）×净重。未填写基准价时使用数量×单价。"
+  },
+  "Produtos e pesos": {
+    "en-US": "Products and weights",
+    "zh-CN": "产品与重量"
+  },
+  "Aplicado a novos produtos. Cada produto pode ter seu próprio desconto, sem alterar operações existentes.": {
+    "en-US": "Applies to new products. Each product can have its own deduction; existing operations stay unchanged.",
+    "zh-CN": "应用于新产品。每个产品可设置独立扣减比例，不影响已有业务。"
+  },
+  "Informe um percentual entre 0 e 100.": {
+    "en-US": "Enter a percentage between 0 and 100.",
+    "zh-CN": "请输入0到100之间的百分比。"
+  },
+  "O peso de referência do frete difere do peso líquido dos produtos; revise o rateio.": {
+    "en-US": "The freight reference weight differs from total product net weight; review the allocation.",
+    "zh-CN": "运费参考重量与产品总净重不一致，请检查分摊。"
+  },
+  "Moeda da despesa": {
+    "en-US": "Expense currency",
+    "zh-CN": "费用币种"
+  }
+});

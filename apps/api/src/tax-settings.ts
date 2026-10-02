@@ -1,7 +1,7 @@
 import { taxRateLabels, type TaxRate, type TaxRateCode } from "@exporta/domain";
 
 export function canWriteSetting(role: "admin" | "operator", key: string) {
-  return role === "admin" || key === "tax-rates";
+  return role === "admin" || ["tax-rates", "product-defaults"].includes(key);
 }
 
 export function manualTaxRates(value: unknown, updatedAt = new Date().toISOString()): TaxRate[] | null {
@@ -15,4 +15,10 @@ export function manualTaxRates(value: unknown, updatedAt = new Date().toISOStrin
     rates.push({ code: item.code as TaxRateCode, rate: item.rate, source: "manual", updatedAt });
   }
   return rates;
+}
+
+export function manualProductDefaults(value: unknown) {
+  if (!value || typeof value !== "object" || !("netWeightReductionRate" in value)) return null;
+  const rate = value.netWeightReductionRate;
+  return typeof rate === "number" && Number.isFinite(rate) && rate >= 0 && rate <= 100 ? { netWeightReductionRate: rate } : null;
 }

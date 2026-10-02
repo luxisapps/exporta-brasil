@@ -1,7 +1,7 @@
 import * as XLSX from "@e965/xlsx";
 import type { ImportBudget, ImportItem, TaxRateCode } from "@exporta/domain";
 
-export type SheetBudget = Pick<ImportBudget, "exchangeRate" | "marginRate" | "calculationModel" | "priceBasis" | "marginMethod" | "expenses">;
+export type SheetBudget = Pick<ImportBudget, "exchangeRate" | "marginRate" | "calculationModel" | "priceBasis" | "marginMethod" | "expenses" | "freightWeightKg">;
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 export function readFinalCostSheet(workbook: XLSX.WorkBook) {
   const sheetName = workbook.SheetNames.find((name) => normalize(name).includes("por item"));
@@ -27,5 +27,5 @@ export function readFinalCostSheet(workbook: XLSX.WorkBook) {
     { id: "sheet-other", label: "Despesas de desembaraço e operação", category: "Logística", kind: "other", amount: number(closing.B45) + number(closing.B28), currency: "BRL", allocationMethod: "weight", status: "estimated" }
   ];
   const budget: SheetBudget = { exchangeRate: number(closing.B4), marginRate: number(sheet.R8) * 100, calculationModel: "worksheet", priceBasis: "cif", marginMethod: "markup", expenses };
-  return { items, budget, sheetName, warnings: ["Os valores USD da aba são totais por produto e foram convertidos para preços unitários.", "Os valores dos produtos incluem frete (CIF). Revise as premissas antes de aplicar.", "As alíquotas e fórmulas foram trazidas da planilha da empresa; revise o adicional de IRPJ com o contador."] };
+  return { items, budget, sheetName, warnings: ["Os valores USD da aba são totais por produto e foram convertidos para preços unitários.", "Os valores dos produtos incluem frete (CIF). Revise as premissas antes de aplicar.", "Na planilha de referência, B45 já inclui AFRMM e a aba por item o soma novamente. O rateio foi preservado para comparação; revise essa duplicação antes da aprovação.", "As alíquotas e fórmulas foram trazidas da planilha da empresa; revise o adicional de IRPJ com o contador."] };
 }

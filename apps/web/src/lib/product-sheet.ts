@@ -1,3 +1,4 @@
+import { readRoseProductSheet } from "./rose-product-sheet";
 import * as XLSX from "@e965/xlsx";
 import { readFinalCostSheet, type SheetBudget } from "./final-cost-sheet";
 import type { ImportItem } from "@exporta/domain";
@@ -19,7 +20,7 @@ const headerAliases: Partial<Record<Field, string[]>> = {
   unitPriceUsd: ["valor unitario usd", "preco unitario usd", "preco unitario us", "unit price usd", "valor unit usd", "preco usd", "cfr unitario", "cfr unit", "单品货值 usd", "unit value usd"],
   grossWeightKg: ["peso bruto unitario kg", "peso bruto kg", "peso unitario kg", "peso kg", "g w", "g w kg", "peso", "总重量 kg", "total weight kg"],
   netWeightKg: ["peso liquido", "peso liquido total kg", "peso liquido kg", "p liquido", "net weight kg", "net weight"],
-  boxWeightKg: ["单箱重量 kg", "peso por caixa kg", "weight per box kg"], totalVolumeM3: ["总体积 m3", "total volume", "total volume m3"],
+  boxWeightKg: ["单箱重量 kg", "peso por caixa kg", "weight per box kg"], totalVolumeM3: ["总体积 m3", "总体积 立方", "total volume", "total volume m3"],
   iiRate: ["ii", "aliquota ii", "ii percent", "ii %"], ipiRate: ["ipi", "aliquota ipi", "ipi percent", "ipi %"], leadTime: ["货期", "prazo", "lead time"]
 };
 
@@ -39,10 +40,12 @@ export async function parseProductSheet(file: File): Promise<ProductSheetResult>
   const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
   const finalCosts = readFinalCostSheet(workbook);
   if (finalCosts) return finalCosts;
+  const rose = readRoseProductSheet(workbook);
+  if (rose) return rose;
   let selected: { sheetName: string; rows: unknown[][]; headerRowIndex: number } | undefined;
   let candidateCount = 0;
   for (const sheetName of workbook.SheetNames) {
-    const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, defval: "", raw: false });
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, defval: "", raw: true });
     const headerRowIndex = findHeader(rows);
     if (headerRowIndex < 0) continue;
     candidateCount += 1;

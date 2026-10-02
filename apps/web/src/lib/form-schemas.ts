@@ -33,14 +33,14 @@ export const formSchemas = {
   customer: object({ legalName: required, country: required, taxId: text, email }).superRefine((values, context) => {
     if (values.country === "BR" && values.taxId.trim() && !isValidCnpj(values.taxId)) context.addIssue({ code: "custom", path: ["taxId"], message: "Informe um CNPJ válido." });
   }),
-  item: object({ name: required, ncm: text.refine(value => !value || /^\d{8}$/.test(value), "O NCM deve ter 8 dígitos."), quantity: numeric(true, true, 1), unitPriceUsd: numeric(), grossWeightKg: numeric(), netWeightKg: numeric(), boxCount: numeric(false, true), boxWeightKg: numeric(), unitsPerBox: numeric(false, true), totalVolumeM3: numeric() }).superRefine((values, context) => {
+  item: object({ name: required, ncm: text.refine(value => !value || /^\d{8}$/.test(value), "O NCM deve ter 8 dígitos."), quantity: numeric(true, true, 1), unitPriceUsd: numeric(), grossWeightKg: numeric(), netWeightKg: numeric(), netWeightReductionRate: numeric().default("").refine(value => !value || Number(value) <= 100, "Informe um percentual entre 0 e 100."), pautaUsdPerKg: numeric().default(""), surplusUsdPerKg: numeric().default(""), boxCount: numeric(), boxWeightKg: numeric(), unitsPerBox: numeric(false, true), totalVolumeM3: numeric() }).superRefine((values, context) => {
     for (const [name, value] of Object.entries(values)) if (name.startsWith("tax_") && value !== "" && (!Number.isFinite(Number(value)) || Number(value) < 0)) context.addIssue({ code: "custom", path: [name], message: "Informe uma alíquota válida, igual ou maior que zero." });
   }),
   timeline: object({ title: required, occurredAt: date(true, true), type: required }),
   task: object({ title: required, dueDate: date() }),
   document: object({ title: required, type: required, status: required, issuedAt: date(), expiresAt: date() }),
   container: object({ container: text }),
-  taxSettings: z.record(z.string(), numeric(true))
+  taxSettings: z.record(z.string(), numeric(true)).superRefine((values, context) => { if (Number(values.netWeightReductionRate) > 100) context.addIssue({ code: "custom", path: ["netWeightReductionRate"], message: "Informe um percentual entre 0 e 100." }); })
 } satisfies Record<string, FormSchema>;
 
 /** Preserve the existing serializers while the source of values is React Hook Form. */

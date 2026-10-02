@@ -36,7 +36,8 @@ test("new import requires the current API's customer and ETA, allows an unknown 
 const draftItem = { name: "Mochila", quantity: "1", ncm: "", unitPriceUsd: "", grossWeightKg: "", netWeightKg: "", boxCount: "", boxWeightKg: "", unitsPerBox: "", totalVolumeM3: "" };
 test("incomplete product can be saved; supplied NCM and numeric values are validated", () => {
   assert.equal(formSchemas.item.safeParse(draftItem).success, true);
-  for (const invalid of [{ quantity: "0" }, { quantity: "1.5" }, { unitPriceUsd: "-1" }, { boxCount: "1.2" }, { ncm: "123" }, { tax_ii: "-1" }]) assert.equal(formSchemas.item.safeParse({ ...draftItem, ...invalid }).success, false);
+  assert.equal(formSchemas.item.safeParse({ ...draftItem, boxCount: "1.5" }).success, true);
+  for (const invalid of [{ quantity: "0" }, { quantity: "1.5" }, { unitPriceUsd: "-1" }, { ncm: "123" }, { tax_ii: "-1" }]) assert.equal(formSchemas.item.safeParse({ ...draftItem, ...invalid }).success, false);
   assert.equal(formSchemas.item.safeParse({ ...draftItem, ncm: "42029200", tax_ii: "0", unitPriceUsd: "0.123456789" }).success, true);
 });
 test("tax settings require numeric nonnegative values without an arbitrary rate cap", () => {

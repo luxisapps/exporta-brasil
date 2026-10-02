@@ -1,3 +1,4 @@
+export { defaultNetWeightReductionRate, grossWeight, netWeight, productFobUsd, applyProductDefaults } from "./product-valuation.js";
 import { calculateWorksheetImport, type ItemPricing, type PricingTotals } from "./item-pricing.js";
 export { effectiveTaxRate } from "./item-pricing.js";
 export type { ItemPricing, PricingTotals } from "./item-pricing.js";
@@ -17,7 +18,7 @@ export type ImportExpense = { kind?: ExpenseKind; id: string; category: string; 
 export type BudgetStatus = "draft" | "approved" | "superseded";
 export type ShipmentStatus = "not_shipped" | "purchase_confirmed" | "shipped" | "arrived" | "closed";
 /** calculationModel and marginMethod are compatibility metadata; the engine always uses worksheet + markup. */
-export type ImportBudget = { calculationModel?: "legacy" | "worksheet"; priceBasis?: "fob" | "cif"; marginMethod?: "sale_margin" | "markup"; id: string; name: string; number: number; status: BudgetStatus; createdAt: string; approvedAt?: string; approvedBy?: string; exchangeRate: number; marginRate: number; taxRates: TaxRate[]; expenses: ImportExpense[]; notes?: string };
+export type ImportBudget = { calculationModel?: "legacy" | "worksheet"; priceBasis?: "fob" | "cif"; freightWeightKg?: number; marginMethod?: "sale_margin" | "markup"; id: string; name: string; number: number; status: BudgetStatus; createdAt: string; approvedAt?: string; approvedBy?: string; exchangeRate: number; marginRate: number; taxRates: TaxRate[]; expenses: ImportExpense[]; notes?: string };
 
 export type ImportItem = {
   id: string;
@@ -29,6 +30,9 @@ export type ImportItem = {
   grossWeightKg: number;
   /** Peso líquido TOTAL do produto, não por unidade. */
   netWeightKg?: number;
+  netWeightReductionRate?: number;
+  pautaUsdPerKg?: number;
+  surplusUsdPerKg?: number;
   sourcePriceBasis?: "fob" | "cif";
   iiRate: number;
   ipiRate: number;

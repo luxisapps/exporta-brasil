@@ -1,3 +1,4 @@
+import { grossWeight, netWeight, productFobUsd } from "./product-valuation.js";
 import type { ImportBudget, ImportExpense, ImportItem, ImportOperation, TaxRateCode } from "./index.js";
 
 export type ItemPricing = {
@@ -16,10 +17,11 @@ export function effectiveTaxRate(item: ImportItem, budget: ImportBudget | undefi
   return override ?? (legacy > 0 ? legacy : budget?.taxRates.find((entry) => entry.code === code)?.rate ?? legacy);
 }
 export function calculateWorksheetImport(operation: Pick<ImportOperation, "items" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "budgets">, budget: ImportBudget) {
+  operation = { ...operation, items: operation.items.map(item => ({ ...item, netWeightKg: netWeight(item) })) };
   const exchangeRate = budget.exchangeRate, cifInput = budget.priceBasis === "cif";
-  const inputTotal = operation.items.reduce((sum, item) => sum + item.quantity * item.unitPriceUsd * exchangeRate, 0);
+  const inputTotal = operation.items.reduce((sum, item) => sum + productFobUsd(item) * exchangeRate, 0);
   const totalNetWeight = operation.items.reduce((sum, item) => sum + Math.max(0, item.netWeightKg ?? 0), 0);
-  const totalWeight = operation.items.reduce((sum, item) => sum + (item.boxWeightKg && item.boxCount ? item.boxWeightKg * item.boxCount : item.grossWeightKg * item.quantity), 0);
+  const totalWeight = operation.items.reduce((sum, item) => sum + grossWeight(item), 0);
   const volume = (item: ImportItem) => item.totalVolumeM3 ?? ((item.lengthCm || 0) * (item.widthCm || 0) * (item.heightCm || 0) * (item.boxCount || 0) / 1e6);
   const totalVolume = operation.items.reduce((sum, item) => sum + volume(item), 0);
   const totalQuantity = operation.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -30,22 +32,23 @@ export function calculateWorksheetImport(operation: Pick<ImportOperation, "items
   const warnings: string[] = [];
   if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) warnings.push("Informe um câmbio positivo para concluir o cálculo.");
   if (!operation.items.length) warnings.push("Adicione produtos antes de aprovar os custos.");
-  if (operation.items.some(item => item.quantity <= 0 || !Number.isFinite(item.quantity) || item.unitPriceUsd <= 0 || !Number.isFinite(item.unitPriceUsd))) warnings.push("Preencha quantidade e preço positivos em todos os produtos.");
+  if (operation.items.some(item => item.quantity <= 0 || !Number.isFinite(item.quantity) || productFobUsd(item) <= 0 || !Number.isFinite(productFobUsd(item)))) warnings.push("Preencha quantidade e preço positivos em todos os produtos.");
   if (operation.items.some(item => item.sourcePriceBasis === "cif") && !cifInput) warnings.push("A planilha contém valores CIF. Selecione a base CIF antes de concluir o orçamento.");
   const eligibleWeight = expenses.some((expense) => expense.amount > 0 && (expense.allocationMethod === "weight" || expense.kind === "siscomex" || expense.kind === "afrmm"));
   if (eligibleWeight && operation.items.some((item) => !(item.netWeightKg && item.netWeightKg > 0))) warnings.push("Preencha o peso líquido total de todos os produtos para completar o rateio por peso.");
   if (expenses.some((expense) => expense.amount > 0 && expense.allocationMethod === "volume") && operation.items.some(item => !(volume(item) > 0))) warnings.push("Preencha o volume dos produtos para completar o rateio por volume.");
+  if (budget.freightWeightKg && Math.abs(budget.freightWeightKg - totalNetWeight) > 0.000001) warnings.push("O peso de referência do frete difere do peso líquido dos produtos; revise o rateio.");
   if (!operation.items.length && baseExpenses) warnings.push("Adicione produtos para distribuir as despesas.");
   const hasIncludedInternational = cifInput && budget.expenses.some((expense) => value(expense) !== 0 && isInternational(expense));
   if (hasIncludedInternational) warnings.push("Frete e seguro classificados como internacionais já estão no CIF e foram excluídos das despesas somadas.");
   const allocation = (expense: ImportExpense, item: ImportItem) => {
     const method = expense.kind === "siscomex" || expense.kind === "afrmm" ? "weight" : expense.allocationMethod;
-    const denominator = method === "weight" ? totalNetWeight : method === "volume" ? totalVolume : method === "quantity" ? totalQuantity : method === "fixed" ? operation.items.length : inputTotal;
-    const numerator = method === "weight" ? Math.max(0, item.netWeightKg ?? 0) : method === "volume" ? volume(item) : method === "quantity" ? item.quantity : method === "fixed" ? 1 : item.quantity * item.unitPriceUsd * exchangeRate;
+    const denominator = method === "weight" ? (expense.kind === "freight" ? budget.freightWeightKg ?? totalNetWeight : totalNetWeight) : method === "volume" ? totalVolume : method === "quantity" ? totalQuantity : method === "fixed" ? operation.items.length : inputTotal;
+    const numerator = method === "weight" ? Math.max(0, item.netWeightKg ?? 0) : method === "volume" ? volume(item) : method === "quantity" ? item.quantity : method === "fixed" ? 1 : productFobUsd(item) * exchangeRate;
     return denominator > 0 ? value(expense) * numerator / denominator : 0;
   };
   const raw = operation.items.map((item) => {
-    const inputUsd = item.quantity * item.unitPriceUsd, itemBase = inputUsd * exchangeRate;
+    const inputUsd = productFobUsd(item), itemBase = inputUsd * exchangeRate;
     const part = (kind: NonNullable<ImportExpense["kind"]>) => expenses.filter((expense) => (expense.kind ?? "other") === kind).reduce((sum, expense) => sum + allocation(expense, item), 0);
     const freight = part("freight"), insurance = part("insurance"), siscomex = part("siscomex"), afrmm = part("afrmm"), otherExpenses = part("other");
     const allocatedExpenses = freight + insurance + siscomex + afrmm + otherExpenses;

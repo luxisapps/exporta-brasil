@@ -527,3 +527,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 .login-card .login-input .shadcn-input:focus-visible { outline: none; box-shadow: none; }
 
 .phone-input{display:flex;gap:8px;min-width:0}.phone-input__country{width:112px;flex-shrink:0}.phone-input>.shadcn-input{min-width:0;flex:1}.phone-input__option{display:flex;align-items:center;gap:8px}.phone-input__option svg{width:21px;height:15px;flex-shrink:0;border-radius:2px}.phone-input__option small{margin-left:auto;color:var(--muted-foreground,#aab8cd)}.phone-input__menu{max-width:calc(100vw - 32px);width:300px}
+
+.product-valuation-fields{border:1px solid var(--border,#263244);border-radius:12px;padding:16px}.product-valuation-fields>p{color:#aab8cd;font-size:12px;line-height:1.6;margin:8px 0 16px}.valuation-totals{display:flex;flex-wrap:wrap;gap:12px 24px;margin:0 0 20px;color:#aab8cd;font-size:13px}.valuation-totals b{color:#f1f5f9}
+
+.expense-money{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:start;gap:8px}.expense-money .shadcn-select-trigger{min-width:0}
