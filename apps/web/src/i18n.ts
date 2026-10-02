@@ -452,3 +452,21 @@ Object.assign(uiText, {
   "Quantidade × preço em USD × câmbio.": { "en-US": "Quantity × USD price × exchange rate.", "zh-CN": "数量 × 美元单价 × 汇率。" },
   "II + IPI + PIS-importação + COFINS-importação.": { "en-US": "II + IPI + import PIS + import COFINS.", "zh-CN": "II + IPI + 进口 PIS + 进口 COFINS。" }
 });
+
+Object.assign(uiText, {
+  "País do cliente": {"en-US":"Customer country","zh-CN":"客户所在国家"},
+  "CNPJ (opcional)": {"en-US":"CNPJ (optional)","zh-CN":"巴西 CNPJ（可选）"},
+  "Documento fiscal / registro da empresa (opcional)": {"en-US":"Tax ID / company registration (optional)","zh-CN":"税号 / 企业注册号（可选）"},
+  "Identificação da empresa no país de origem": {"en-US":"Company identification in its country","zh-CN":"企业在所在国家的登记号码"},
+  "Nome legal da empresa": {"en-US":"Legal company name","zh-CN":"企业法定名称"},
+  "Situação do CNPJ na Receita Federal": {"en-US":"CNPJ status at the Brazilian Federal Revenue","zh-CN":"巴西联邦税务局 CNPJ 登记状态"},
+  "Informação retornada pela consulta do CNPJ.": {"en-US":"Information returned by the CNPJ lookup.","zh-CN":"CNPJ 查询返回的信息。"},
+  "Informe o endereço no país do cliente. O código postal é opcional.": {"en-US":"Enter the address in the customer's country. Postal code is optional.","zh-CN":"填写客户所在国家的地址。邮政编码为可选项。"},
+  "CEP (opcional)": {"en-US":"Brazilian postal code (optional)","zh-CN":"巴西邮政编码（可选）"},
+  "Código postal (opcional)": {"en-US":"Postal code (optional)","zh-CN":"邮政编码（可选）"},
+  "Código postal": {"en-US":"Postal code","zh-CN":"邮政编码"},
+  "Estado / província / região": {"en-US":"State / province / region","zh-CN":"州 / 省 / 地区"},
+  "Província ou região": {"en-US":"Province or region","zh-CN":"省或地区"},
+  "Telefone com código do país": {"en-US":"Phone with country calling code","zh-CN":"电话（含国家区号）"},
+  "Documento fiscal": {"en-US":"Tax ID","zh-CN":"税号"}
+});
