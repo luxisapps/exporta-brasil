@@ -512,3 +512,16 @@ h1, h2, p { margin: 0; } small { display: block; }
 @media(max-width:767px) { .operation-detail-page .cost-result { grid-template-columns:minmax(0,1fr); gap:16px; }.financial-workspace { overflow:hidden; }.operation-detail-page .cost-total { justify-items:start; text-align:left; }.financial-workspace .budget-methods { max-width:100%; } }
 
 .item-pricing-toolbar>.shadcn-input { height:44px; padding:0 12px; width:100%; color:#e3ecfa; border:1px solid #344156; border-radius:8px; background:#070c13; font-size:13px; }
+
+/* Shared shadcn field validation; errors stay in normal flow on every viewport. */
+[data-slot="field-label"] { color: inherit; font: inherit; }
+.form-field-error { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: #fda4af; font-size: 12px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.form-field-error svg { flex: 0 0 auto; margin-top: 2px; }
+.shadcn-input[aria-invalid="true"], .shadcn-textarea[aria-invalid="true"], .shadcn-select-trigger[aria-invalid="true"], .date-picker__trigger[aria-invalid="true"] { border-color: #fb7185; }
+.formatted-number:has([aria-invalid="true"]), .login-input:has([aria-invalid="true"]) { border-color: #fb7185; }
+.form-error-summary { padding: 12px 14px; border: 1px solid rgba(251,113,133,.35); border-radius: 10px; background: rgba(159,18,57,.08); color: #fda4af; font-size: 12px; }
+.form-error-summary ul { margin: 6px 0 0; padding-left: 18px; }
+.form-error-summary button { border: 0; padding: 3px 0; color: inherit; font: inherit; text-align: left; text-decoration: underline; text-underline-offset: 3px; background: transparent; }
+.login-card .login-field { gap: 7px; color: #d7e2ef; font-size: 13px; font-weight: 600; }
+.login-card .login-input .shadcn-input { border: 0; border-radius: 0; min-height: 46px; background: transparent; padding: 0; }
+.login-card .login-input .shadcn-input:focus-visible { outline: none; box-shadow: none; }

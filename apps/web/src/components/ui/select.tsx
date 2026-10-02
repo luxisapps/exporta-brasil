@@ -1,15 +1,22 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import { createContext, useContext, forwardRef, type ComponentPropsWithoutRef, type ElementRef } from "react";
+import { FormControl, type FieldBinding } from "./form";
+import { useFieldId } from "./field";
 
-export const Select = SelectPrimitive.Root;
+const BindingContext = createContext<FieldBinding | undefined>(undefined);
+export function Select(props: ComponentPropsWithoutRef<typeof SelectPrimitive.Root>) {
+  return <FormControl name={props.name} defaultValue={props.defaultValue} value={props.value}>{field => <BindingContext.Provider value={field}><SelectPrimitive.Root {...props} value={field ? field.value : props.value} onValueChange={value => { field?.onChange(value); props.onValueChange?.(value); }} /></BindingContext.Provider>}</FormControl>;
+}
 export const SelectValue = SelectPrimitive.Value;
 
-export const SelectTrigger = forwardRef<ElementRef<typeof SelectPrimitive.Trigger>, ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>>(({ children, className = "", ...props }, ref) => (
-  <SelectPrimitive.Trigger ref={ref} className={`shadcn-select-trigger ${className}`} {...props}>
+export const SelectTrigger = forwardRef<ElementRef<typeof SelectPrimitive.Trigger>, ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>>(({ children, className = "", ...props }, ref) => {
+  const field = useContext(BindingContext);
+  const fieldId = useFieldId();
+  return <SelectPrimitive.Trigger id={field?.id ?? fieldId} aria-invalid={field?.["aria-invalid"]} aria-describedby={field?.["aria-describedby"]} onBlur={field?.onBlur} ref={element => { field?.ref(element); if (typeof ref === "function") ref(element); else if (ref) ref.current = element; }} className={`shadcn-select-trigger ${className}`} {...props}>
     {children}<SelectPrimitive.Icon asChild><ChevronDown className="shadcn-select-chevron" size={14} aria-hidden="true" /></SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-));
+  </SelectPrimitive.Trigger>;
+});
 SelectTrigger.displayName = "SelectTrigger";
 
 export const SelectContent = forwardRef<ElementRef<typeof SelectPrimitive.Content>, ComponentPropsWithoutRef<typeof SelectPrimitive.Content>>(({ children, className = "", position = "popper", ...props }, ref) => (

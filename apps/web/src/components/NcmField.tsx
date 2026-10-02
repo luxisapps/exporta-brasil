@@ -1,3 +1,5 @@
+import { FormInput as Input } from "./ui/form-input";
+import { Field, FieldLabel } from "./ui/field";
 import { apiFetch } from "../lib/api-fetch";
 import { useEffect, useRef, useState } from "react";
 import { Search, Sparkles } from "lucide-react";
@@ -18,9 +20,6 @@ export function NcmField({ initialCode = "", apiUrl, token }: { initialCode?: st
   const input = useRef<HTMLInputElement>(null);
   const currentCode = useRef(code); currentCode.current = code;
   const choose = (entry: Entry) => { setCode(entry.code); setSelected(entry); setError(""); };
-  useEffect(() => {
-    if (input.current) input.current.setCustomValidity(selected?.code === code ? "" : "Selecione um NCM vigente no catálogo oficial.");
-  }, [code, selected]);
   useEffect(() => {
     setLoading(query.trim().length >= 2);
     if (query.trim().length < 2) { setEntries([]); return; }
@@ -54,8 +53,8 @@ export function NcmField({ initialCode = "", apiUrl, token }: { initialCode?: st
     finally { setAnalyzing(false); }
   }
   return <div className="ncm-field full">
-    <label className="field"><span>NCM</span><input autoComplete="off" ref={input} name="ncm" required value={code} inputMode="numeric" pattern="[0-9]{8}" maxLength={8} placeholder="8 dígitos" onChange={(event) => { const value = event.target.value.replace(/\D/g, ""); setCode(value); setSelected(null); setQuery(value); }} /></label>
-    <div className="ncm-search"><label className="field"><span>Buscar no catálogo oficial</span><div className="ncm-search-input"><Search size={16} aria-hidden="true" /><input autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Código, material ou tipo de produto" /></div></label><button type="button" className="button button--secondary" disabled={analyzing} onClick={() => void suggest()}><Sparkles size={16} />{analyzing ? "Analisando…" : "Sugerir NCM com IA"}</button></div>
+    <Field><FieldLabel>NCM</FieldLabel><Input autoComplete="off" ref={input} name="ncm" value={code} inputMode="numeric" pattern="[0-9]{8}" maxLength={8} placeholder="8 dígitos" onChange={(event) => { const value = event.target.value.replace(/\D/g, ""); setCode(value); setSelected(null); setQuery(value); }} /></Field>
+    <div className="ncm-search"><Field><FieldLabel>Buscar no catálogo oficial</FieldLabel><div className="ncm-search-input"><Search size={16} aria-hidden="true" /><Input autoComplete="off" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Código, material ou tipo de produto" /></div></Field><button type="button" className="button button--secondary" disabled={analyzing} onClick={() => void suggest()}><Sparkles size={16} />{analyzing ? "Analisando…" : "Sugerir NCM com IA"}</button></div>
     {loading ? <div className="ncm-loading" role="status" aria-label="Consultando catálogo"><span className="skeleton" /><span className="skeleton" /></div> : entries.length > 0 ? <Select value={selected?.code ?? ""} onValueChange={(value) => { const entry = entries.find((entry) => entry.code === value); if (entry) choose(entry); }}><SelectTrigger aria-label="Resultados do catálogo NCM"><SelectValue><span className="ncm-selected-label">{selected ? `${formatCode(selected.code)} — ${selected.description}` : `${entries.length} ${entries.length === 1 ? "resultado" : "resultados"} — selecione um NCM`}</span></SelectValue></SelectTrigger><SelectContent>{entries.map((entry) => <SelectItem key={entry.code} value={entry.code}><span className="ncm-option"><strong>{formatCode(entry.code)}</strong><span>{entry.fullDescription}</span></span></SelectItem>)}</SelectContent></Select> : query.length >= 2 && !error ? <p className="muted">Nenhum NCM encontrado. Tente outro termo.</p> : null}
     {selected && <p className="ncm-description"><strong>{formatCode(selected.code)}</strong> {selected.fullDescription}<small>Descrição oficial · Classif / Receita Federal</small></p>}
     {error && <p role="alert" className="users-message">{error}</p>}

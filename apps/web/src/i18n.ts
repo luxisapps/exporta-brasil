@@ -470,3 +470,64 @@ Object.assign(uiText, {
   "Telefone com código do país": {"en-US":"Phone with country calling code","zh-CN":"电话（含国家区号）"},
   "Documento fiscal": {"en-US":"Tax ID","zh-CN":"税号"}
 });
+
+Object.assign(uiText, {
+  "Preencha este campo.": {
+    "en-US": "Fill in this field.",
+    "zh-CN": "请填写此字段。"
+  },
+  "Informe um e-mail válido.": {
+    "en-US": "Enter a valid email address.",
+    "zh-CN": "请输入有效的电子邮箱地址。"
+  },
+  "A senha deve ter pelo menos 8 caracteres.": {
+    "en-US": "The password must have at least 8 characters.",
+    "zh-CN": "密码至少需要8个字符。"
+  },
+  "As senhas não coincidem.": {
+    "en-US": "Passwords do not match.",
+    "zh-CN": "两次输入的密码不一致。"
+  },
+  "Informe uma data e um horário válidos.": {
+    "en-US": "Enter a valid date and time.",
+    "zh-CN": "请输入有效的日期和时间。"
+  },
+  "Selecione uma data válida.": {
+    "en-US": "Select a valid date.",
+    "zh-CN": "请选择有效日期。"
+  },
+  "Informe um número válido.": {
+    "en-US": "Enter a valid number.",
+    "zh-CN": "请输入有效数字。"
+  },
+  "O valor não pode ser negativo.": {
+    "en-US": "The value cannot be negative.",
+    "zh-CN": "数值不能为负数。"
+  },
+  "Informe uma quantidade maior que zero.": {
+    "en-US": "Enter a quantity greater than zero.",
+    "zh-CN": "请输入大于零的数量。"
+  },
+  "Informe um número inteiro.": {
+    "en-US": "Enter a whole number.",
+    "zh-CN": "请输入整数。"
+  },
+  "Informe um CNPJ válido.": {
+    "en-US": "Enter a valid CNPJ.",
+    "zh-CN": "请输入有效的CNPJ。"
+  },
+  "O NCM deve ter 8 dígitos.": {
+    "en-US": "The NCM must have 8 digits.",
+    "zh-CN": "NCM必须为8位数字。"
+  },
+  "Informe uma alíquota válida, igual ou maior que zero.": {
+    "en-US": "Enter a valid tax rate of zero or more.",
+    "zh-CN": "请输入大于或等于零的有效税率。"
+  },
+  "Revise os campos destacados antes de salvar.": {
+    "en-US": "Review the highlighted fields before saving.",
+    "zh-CN": "保存前请检查突出显示的字段。"
+  }
+});
+
+Object.assign(uiText, { "Não foi possível salvar. Tente novamente.": { "en-US": "Unable to save. Try again.", "zh-CN": "无法保存，请重试。" } });

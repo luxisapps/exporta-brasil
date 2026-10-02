@@ -8,6 +8,12 @@ If the component is not yet in this repository, add its shadcn-compatible implem
 
 Keep custom styling in the application theme, but preserve the component's accessibility and keyboard behavior.
 
+## Forms and validation
+
+Use the shared `Form` / `FormControl`, React Hook Form and explicit Zod schemas for every submit form. Use `FormInput`, `FieldSelect`, `DatePicker`, `NumberInput`, and `Textarea`; pair fields with `Field` / `FieldLabel`. Show translated inline errors with `FieldError` and preserve focus and keyboard access. Do not add browser validation popups, `reportValidity` or `setCustomValidity`.
+
+Validate only business requirements. Customer CNPJ and international address/contact fields are optional; validate CNPJ only when provided for Brazil. Draft products can omit NCM, prices and weights until completed. Do not add tax-rate caps, future-only dates, country-specific phone restrictions, password complexity rules, or network lookup requirements without a concrete business need. Login must accept existing passwords; new passwords use the API's minimum of eight characters.
+
 Selection fields must use the shared shadcn/Radix Select (`FieldSelect` for text options), never a visible native select. Use the shared 44px trigger height, padding, borders, and focus styles; keep custom avatar content in the assignee selector. The compact language flag control is the deliberate exception.
 
 ## Monetary amounts

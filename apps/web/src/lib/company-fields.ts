@@ -1,0 +1,6 @@
+export function cnpjRaw(value: string) { return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14); }
+export function cepRaw(value: string) { return value.replace(/\D/g, "").slice(0, 8); }
+export function formatCep(value: string) { const raw = cepRaw(value); return raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw; }
+export function formatCnpj(value: string) { const raw = cnpjRaw(value); return [raw.slice(0, 2), raw.slice(2, 5), raw.slice(5, 8), raw.slice(8, 12), raw.slice(12, 14)].filter(Boolean).map((part, index) => index === 0 ? part : index === 3 ? `/${part}` : index === 4 ? `-${part}` : `.${part}`).join(""); }
+export function cnpjDigit(value: string) { const weights = value.length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]; const remainder = [...value].reduce((sum, character, index) => sum + (character.charCodeAt(0) - 48) * weights[index], 0) % 11; return remainder < 2 ? 0 : 11 - remainder; }
+export function isValidCnpj(value: string) { const raw = value.toUpperCase().replace(/[.\/\-\s]/g, ""); if (!/^[A-Z0-9]{12}[0-9]{2}$/.test(raw) || (/^\d+$/.test(raw) && /^([0-9])\1+$/.test(raw))) return false; const base = raw.slice(0, 12); const first = cnpjDigit(base); return Number(raw[12]) === first && Number(raw[13]) === cnpjDigit(`${base}${first}`); }
