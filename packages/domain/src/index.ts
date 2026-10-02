@@ -16,6 +16,7 @@ export type ExpenseKind = "freight" | "insurance" | "siscomex" | "afrmm" | "othe
 export type ImportExpense = { kind?: ExpenseKind; id: string; category: string; label: string; amount: number; currency: "BRL" | "USD"; exchangeRate?: number; allocationMethod: ExpenseAllocationMethod; status: ExpenseStatus; vendor?: string; document?: string; dueDate?: string; paidAt?: string; notes?: string };
 export type BudgetStatus = "draft" | "approved" | "superseded";
 export type ShipmentStatus = "not_shipped" | "purchase_confirmed" | "shipped" | "arrived" | "closed";
+/** calculationModel and marginMethod are compatibility metadata; the engine always uses worksheet + markup. */
 export type ImportBudget = { calculationModel?: "legacy" | "worksheet"; priceBasis?: "fob" | "cif"; marginMethod?: "sale_margin" | "markup"; id: string; name: string; number: number; status: BudgetStatus; createdAt: string; approvedAt?: string; approvedBy?: string; exchangeRate: number; marginRate: number; taxRates: TaxRate[]; expenses: ImportExpense[]; notes?: string };
 
 export type ImportItem = {
@@ -75,10 +76,6 @@ export const taxRateLabels: Record<TaxRateCode, string> = { ii:"II", ipi:"IPI", 
 
 const round = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 const amountBrl = (expense: ImportExpense, exchangeRate: number) => expense.currency === "USD" ? expense.amount * (expense.exchangeRate || exchangeRate) : expense.amount;
-const rate = (item: ImportItem, budget: ImportBudget | undefined, code: TaxRateCode, legacy: number) => { const override = item.taxRates?.find((entry) => entry.code === code)?.rate; if (override !== undefined) return override; if ((code === "ii" || code === "ipi") && legacy > 0) return legacy; return budget?.taxRates.find((entry) => entry.code === code)?.rate ?? legacy; };
-const itemWeight = (item: ImportItem) => item.boxWeightKg && item.boxCount ? item.boxWeightKg * item.boxCount : item.grossWeightKg * item.quantity;
-const itemVolume = (item: ImportItem) => item.totalVolumeM3 ?? ((item.lengthCm || 0) * (item.widthCm || 0) * (item.heightCm || 0) * (item.boxCount || 0) / 1_000_000);
-
 export function activeBudget(operation: Pick<ImportOperation, "budgets">) { return operation.budgets?.find((budget) => budget.status === "approved") ?? operation.budgets?.find((budget) => budget.status === "draft"); }
 export function hasApprovedBudget(operation: Pick<ImportOperation, "budgets">) { return operation.budgets?.some((budget) => budget.status === "approved") ?? false; }
 export const costOperationStatuses: ImportStatus[] = ["draft", "quotation", "awaiting_approval"];
@@ -91,45 +88,32 @@ export function effectiveOperationStatus(operation: Pick<ImportOperation, "budge
 }
 export function approveOperationCosts(operation: ImportOperation, fallbackBudget: ImportBudget, actorName: string, approvedAt = new Date().toISOString()): Partial<ImportOperation> {
   if (!calculateImport(operation).calculationReady) throw new Error("Revise os alertas da estimativa antes de aprovar.");
-  // Legacy estimates have no budget-wide rates; approval must preserve their current calculation.
-  const current = activeBudget(operation) ?? { ...fallbackBudget, taxRates: [], marginRate: 0 };
+  // Persist the same premises used in the preview, including unstructured beta estimates.
+  const resolved = pricingBudget(operation);
+  const current = activeBudget(operation) ? resolved : { ...resolved, id:fallbackBudget.id, createdAt:fallbackBudget.createdAt };
   const approved = { ...current, status: "approved" as const, approvedAt, approvedBy: actorName };
   const budgets = operation.budgets?.some((budget) => budget.id === current.id) ? operation.budgets.map((budget) => budget.id === current.id ? approved : budget) : [...(operation.budgets ?? []), approved];
   return { budgets, status: approvedOperationStatuses.includes(operation.status) ? operation.status : "awaiting_shipment", shipmentStatus: operation.shipmentStatus ?? "not_shipped" };
 }
-export function calculateImport(operation: Pick<ImportOperation, "items" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "budgets">) {
-  const budget = activeBudget(operation);
-  if (budget?.calculationModel === "worksheet") return calculateWorksheetImport(operation, budget);
-  const exchangeRate = budget?.exchangeRate ?? operation.exchangeRate;
-  const fobBrl = operation.items.reduce((total, item) => total + item.quantity * item.unitPriceUsd * exchangeRate, 0);
-  const totalWeight = operation.items.reduce((total, item) => total + itemWeight(item), 0);
-  const totalVolume = operation.items.reduce((total, item) => total + itemVolume(item), 0);
-  const expenses = budget ? budget.expenses : [
-    { id:"legacy-freight",category:"Frete internacional",label:"Frete internacional",amount:operation.freightBrl,currency:"BRL" as const,allocationMethod:"fob" as const,status:"estimated" as const },
-    { id:"legacy-insurance",category:"Seguro",label:"Seguro",amount:operation.insuranceBrl,currency:"BRL" as const,allocationMethod:"fob" as const,status:"estimated" as const },
-    { id:"legacy-port",category:"Despesas portuárias",label:"Despesas portuárias",amount:operation.portExpensesBrl,currency:"BRL" as const,allocationMethod:"fob" as const,status:"estimated" as const }
+/** The company's spreadsheet is the only calculation engine, including beta records. */
+export function pricingBudget(operation: Pick<ImportOperation, "items" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "budgets">): ImportBudget {
+  const current = activeBudget(operation);
+  const expenses: ImportExpense[] = current?.expenses ?? [
+    { id:"initial-freight",category:"Frete internacional",label:"Frete internacional",kind:"freight",amount:operation.freightBrl,currency:"BRL",allocationMethod:"fob",status:"estimated" },
+    { id:"initial-insurance",category:"Seguro",label:"Seguro",kind:"insurance",amount:operation.insuranceBrl,currency:"BRL",allocationMethod:"fob",status:"estimated" },
+    { id:"initial-port",category:"Despesas portuárias",label:"Despesas portuárias",kind:"other",amount:operation.portExpensesBrl,currency:"BRL",allocationMethod:"fob",status:"estimated" }
   ];
-  const baseExpenses = expenses.reduce((sum, expense) => sum + amountBrl(expense, exchangeRate), 0);
-  const allocated = (item: ImportItem) => expenses.reduce((sum, expense) => {
-    const total = expense.allocationMethod === "weight" ? totalWeight : expense.allocationMethod === "volume" ? totalVolume : expense.allocationMethod === "quantity" ? operation.items.reduce((qty, candidate) => qty + candidate.quantity, 0) : fobBrl;
-    const numerator = expense.allocationMethod === "weight" ? itemWeight(item) : expense.allocationMethod === "volume" ? itemVolume(item) : expense.allocationMethod === "quantity" ? item.quantity : item.quantity * item.unitPriceUsd * exchangeRate;
-    return sum + (total > 0 ? amountBrl(expense, exchangeRate) * numerator / total : 0);
-  }, 0);
-  const items = operation.items.map((item) => {
-    const itemFob = item.quantity * item.unitPriceUsd * exchangeRate;
-    const allocatedExpenses = allocated(item);
-    const ii = itemFob * rate(item, budget, "ii", item.iiRate) / 100;
-    const ipi = (itemFob + ii) * rate(item, budget, "ipi", item.ipiRate) / 100;
-    const pis = itemFob * rate(item, budget, "pis_import", 0) / 100;
-    const cofins = itemFob * rate(item, budget, "cofins_import", 0) / 100;
-    const totalCost = itemFob + allocatedExpenses + ii + ipi + pis + cofins;
-    return { ...item, pricing:undefined as ItemPricing | undefined, itemFob:round(itemFob), allocatedExpenses:round(allocatedExpenses), ii:round(ii), ipi:round(ipi), pis:round(pis), cofins:round(cofins), taxes:round(ii + ipi + pis + cofins), totalCost:round(totalCost), unitCost:item.quantity === 0 ? 0 : round(totalCost / item.quantity) };
-  });
-  const taxes = items.reduce((total, item) => total + item.ii + item.ipi + item.pis + item.cofins, 0);
-  const totalCost = round(fobBrl + baseExpenses + taxes);
-  const marginRate = budget?.marginRate ?? 0;
-  const suggestedSaleTotal = marginRate >= 0 && marginRate < 100 ? round(totalCost / (1 - marginRate / 100)) : null;
-  const calculationWarnings = operation.items.some(item => item.sourcePriceBasis === "cif") ? ["A planilha contém valores CIF. Selecione o modelo da planilha e a base CIF antes de concluir o orçamento."] : [];
-  return { budget, exchangeRate, fobBrl:round(fobBrl), totalWeight:round(totalWeight), totalVolume:round(totalVolume), baseExpenses:round(baseExpenses), taxes:round(taxes), totalCost, suggestedSaleTotal:calculationWarnings.length ? null : suggestedSaleTotal, items, pricingTotals:undefined as PricingTotals | undefined, calculationWarnings, calculationReady:calculationWarnings.length === 0, unallocatedExpenses:0 };
+  return { id:"initial-budget",name:"Orçamento inicial",number:1,status:"draft",createdAt:"",exchangeRate:operation.exchangeRate,marginRate:0,taxRates:[], ...current,
+    calculationModel:"worksheet",marginMethod:"markup",priceBasis:current?.priceBasis ?? "fob",
+    expenses:expenses.map(expense => {
+      // Restore the types of the old beta seed's named international expenses.
+      const category = expense.category.toLowerCase(), label = expense.label.toLowerCase();
+      const kind = expense.kind ?? (["frete", "frete internacional", "freight"].includes(category) || label === "frete internacional" ? "freight" : ["seguro", "seguro internacional", "insurance"].includes(category) || label === "seguro internacional" ? "insurance" : "other");
+      return { ...expense, kind };
+    }) };
+}
+export function calculateImport(operation: Pick<ImportOperation, "items" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "budgets">) {
+  const calculated = calculateWorksheetImport(operation, pricingBudget(operation));
+  return { ...calculated, budget:activeBudget(operation) ? calculated.budget : undefined };
 }
 export function calculateActualExpenses(operation: Pick<ImportOperation, "actualExpenses" | "exchangeRate" | "budgets">) { const budget = activeBudget(operation); const rateValue = budget?.exchangeRate ?? operation.exchangeRate; return round((operation.actualExpenses ?? []).reduce((sum, expense) => sum + amountBrl(expense, rateValue), 0)); }

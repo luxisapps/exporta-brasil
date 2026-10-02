@@ -20,8 +20,8 @@ test("weight and volume are required only for active expenses allocated using th
   assert.deepEqual(missingProductFields(item, [expense("fob")]), []);
   assert.deepEqual(missingProductFields(item, [expense("weight"), expense("volume")]), ["weight", "volume"]);
   assert.deepEqual(missingProductFields(item, [expense("weight", 0)]), []);
-  assert.deepEqual(missingProductFields({ ...item, boxWeightKg: 5, boxCount: 2, lengthCm: 10, widthCm: 10, heightCm: 10 }, [expense("weight"), expense("volume")]), []);
-  assert.deepEqual(missingProductFields({ ...item, grossWeightKg: 0.1, totalVolumeM3: 0.01 }, [expense("weight"), expense("volume")]), []);
+  assert.deepEqual(missingProductFields({ ...item, netWeightKg: 10, boxWeightKg: 5, boxCount: 2, lengthCm: 10, widthCm: 10, heightCm: 10 }, [expense("weight"), expense("volume")]), []);
+  assert.deepEqual(missingProductFields({ ...item, netWeightKg: 1, grossWeightKg: 0.1, totalVolumeM3: 0.01 }, [expense("weight"), expense("volume")]), []);
 });
 
 test("filter reflects completion edits and does not mutate products", () => {

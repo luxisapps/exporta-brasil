@@ -445,3 +445,10 @@ Object.assign(uiText, {
   "Mantenha ao menos um administrador no sistema.": { "en-US": "Keep at least one administrator in the system.", "zh-CN": "系统中必须保留至少一位管理员。" },
   "Informe nome, e-mail válido e perfil. Verifique os dados de contato.": { "en-US": "Enter a name, valid email and role. Check the contact details.", "zh-CN": "请输入姓名、有效邮箱和角色，并检查联系信息。" }
 });
+
+Object.assign(uiText, {
+  "Confira a composição do custo, o preço de venda e os tributos de cada produto.": { "en-US": "Review each product’s cost breakdown, selling price and taxes.", "zh-CN": "查看每项产品的成本构成、销售价格及税费。" },
+  "Custo total × (1 + acréscimo / 100).": { "en-US": "Total cost × (1 + markup / 100).", "zh-CN": "总成本 ×（1 + 加价率 / 100）。" },
+  "Quantidade × preço em USD × câmbio.": { "en-US": "Quantity × USD price × exchange rate.", "zh-CN": "数量 × 美元单价 × 汇率。" },
+  "II + IPI + PIS-importação + COFINS-importação.": { "en-US": "II + IPI + import PIS + import COFINS.", "zh-CN": "II + IPI + 进口 PIS + 进口 COFINS。" }
+});

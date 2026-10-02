@@ -59,3 +59,10 @@ Referência: `planilha-final-de-custos.xlsx`, abas PREÇO POR ITEM e FECHAMENTO.
 - Publicado na Vercel: https://exporta-brasil-gamma.vercel.app
 - API no Railway: https://exporta-brasil-production.up.railway.app; health retornou status ok.
 - Pendente operacional: validar o modelo tributário com o contador, especialmente ICMS de entrada e adicional IRPJ. Integração autenticada Siscomex permanece fora desta entrega.
+
+
+## Atualização — 1 de outubro de 2026: cálculo único
+
+O sistema está em beta. Todas as operações passam a usar as fórmulas da planilha da empresa, inclusive registros criados antes da implementação. Não existe seletor de modelo nem de regra de venda: o preço é custo × (1 + acréscimo percentual / 100). Metadados antigos de modelo/margem são aceitos na leitura, mas não escolhem outro motor. Os dados existentes não foram excluídos. Os totais das operações antigas podem mudar para refletir as bases CIF e a regra de acréscimo.
+
+FOB/CIF permanece uma premissa comercial explícita para evitar duplicar frete/seguro. Base, tributos e preço sugerido mostram suas fórmulas junto aos resultados. A composição por produto e os relatórios PDF/XLSX usam o mesmo cálculo central. Despesas por peso usam peso líquido total; nenhum peso é inventado para completar registros antigos.

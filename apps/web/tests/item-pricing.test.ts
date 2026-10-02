@@ -36,14 +36,14 @@ test("FOB includes freight once in CIF; CIF excludes already included internatio
  const fob=calculateImport(base);assert.equal(fob.items[0].pricing?.cifBrl,200);assert.equal(fob.items[0].ii,20);assert.equal(fob.totalCost,220);
  const cif=calculateImport({...base,budgets:[{...base.budgets[0],priceBasis:"cif"}]});assert.equal(cif.items[0].pricing?.cifBrl,100);assert.equal(cif.totalCost,110);assert.equal(cif.calculationReady,true);
 });
-test("missing net weight, wrong CIF basis and invalid sale margin block approval",()=>{
- for(const changed of [ {...operation,items:operation.items.map((item,index)=>index===0?{...item,netWeightKg:undefined}:item)}, {...operation,budgets:[{...budget,priceBasis:"fob" as const}]}, {...operation,budgets:[{...budget,marginMethod:"sale_margin" as const,marginRate:100}]} ]) { const calc=calculateImport(changed);assert.equal(calc.calculationReady,false);assert.equal(calc.suggestedSaleTotal,null);assert.throws(()=>approveOperationCosts(changed,budget,"Admin")); }
+test("missing net weight, wrong CIF basis and invalid markup block approval",()=>{
+ for(const changed of [ {...operation,items:operation.items.map((item,index)=>index===0?{...item,netWeightKg:undefined}:item)}, {...operation,budgets:[{...budget,priceBasis:"fob" as const}]}, {...operation,budgets:[{...budget,marginRate:-1}]} ]) { const calc=calculateImport(changed);assert.equal(calc.calculationReady,false);assert.equal(calc.suggestedSaleTotal,null);assert.throws(()=>approveOperationCosts(changed,budget,"Admin")); }
  const zero=calculateImport({...operation,items:[{...operation.items[0],quantity:0}]});assert.equal(zero.calculationReady,false);assert.equal(zero.items[0].unitCost,0);
 });
-test("fixed allocations are equal; margin methods differ and negative credits remain visible",()=>{
+test("fixed allocations are equal; one markup rule applies and negative credits remain visible",()=>{
  const simple={...operation,items:operation.items.slice(0,2).map((item,index)=>({...item,quantity:1,unitPriceUsd:100*(index+1),iiRate:0,ipiRate:0,taxRates:[{code:"pis_import" as const,rate:2,source:"manual" as const}]})),budgets:[{...budget,exchangeRate:1,marginRate:20,expenses:[{...budget.expenses[0],kind:"other" as const,allocationMethod:"fixed" as const,amount:100}]}]};
  const markup=calculateImport(simple);assert.equal(markup.items[0].allocatedExpenses,50);assert.equal(markup.items[1].allocatedExpenses,50);assert.equal(markup.items[0].pricing?.pisNet,-2);
- close(markup.suggestedSaleTotal,markup.totalCost*1.2,"markup");const margin=calculateImport({...simple,budgets:[{...simple.budgets[0],marginMethod:"sale_margin"}]});close(margin.suggestedSaleTotal,margin.totalCost/.8,"margin");
+ close(markup.suggestedSaleTotal,markup.totalCost*1.2,"markup");const margin=calculateImport({...simple,budgets:[{...simple.budgets[0],marginMethod:"sale_margin"}]});close(margin.suggestedSaleTotal,margin.totalCost*1.2,"old metadata must not change the rule");
 });
 test("new pricing fields survive JSON persistence and reject malformed optional data",()=>{
  const restored=JSON.parse(JSON.stringify(operation));assert.equal(validPricingFields(restored),true);assert.deepEqual(calculateImport(restored),calculateImport(operation));assert.equal(validPricingFields({...operation,items:[{...operation.items[0],netWeightKg:-1}]}),false);assert.equal(validPricingFields({...operation,budgets:[{...budget,priceBasis:"unknown"}]}),false);
@@ -54,3 +54,15 @@ test("reports export all rows and reconcile sales, credits and tax totals",()=>{
  const workbook=createOperationWorkbook(operation,context);assert.equal(workbook.worksheets[0].name,"Resumo de fechamento");assert.equal(workbook.getWorksheet("Venda por item")?.getCell("D4").value,calc.items[0].pricing?.saleTotal);assert.ok(data.notes.some(note=>note.includes("ICMS de importação")));
 });
 if(process.env.PRICING_QA==="1") {mkdirSync("output/item-pricing",{recursive:true});const context={timeline:[],tasks:[],documents:[]};const font=readFileSync("apps/web/public/fonts/NotoSansSC-Regular.ttf").toString("base64");const pdf=await createOperationPdf(operation,context,font);writeFileSync("output/item-pricing/operation.pdf",Buffer.from(pdf.output("arraybuffer")));await createOperationWorkbook(operation,context).xlsx.writeFile("output/item-pricing/operation.xlsx");writeFileSync("output/item-pricing/fixture.json",JSON.stringify(operation));console.log("QA PDF pages",pdf.getNumberOfPages());}
+
+test("beta metadata cannot select another engine; all summaries and exports use the same formula",()=>{
+ const previous = {...operation,budgets:[{...budget,calculationModel:"legacy" as const,marginMethod:"sale_margin" as const}]};
+ assert.deepEqual(calculateImport(previous),calculateImport(operation));
+ assert.deepEqual(operationReportData(previous,{timeline:[],tasks:[],documents:[]}),operationReportData(operation,{timeline:[],tasks:[],documents:[]}));
+ assert.equal(previous.budgets[0].calculationModel,"legacy");
+ const missing = {...operation,budgets:[{...budget,calculationModel:undefined,marginMethod:undefined}]};
+ assert.deepEqual(calculateImport(missing),calculateImport(operation));
+ const approved=approveOperationCosts(previous,budget,"Admin");
+ assert.equal(approved.budgets?.[0].calculationModel,"worksheet");
+ assert.equal(approved.budgets?.[0].marginMethod,"markup");
+});

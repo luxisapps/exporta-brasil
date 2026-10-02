@@ -495,7 +495,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 @media (max-width:575px) { .budget-expenses-heading { align-items:start; flex-direction:column; } .budget-expenses-heading > div { text-align:left; } }
 
 .operation-detail-page,.operation-detail-page>.panel { min-width:0; }
-.budget-methods { display:grid; grid-template-columns:repeat(3,minmax(0,300px)); gap:14px; margin:14px 0; }
+.budget-methods { display:grid; grid-template-columns:minmax(0,360px); gap:14px; margin:14px 0; }
 .calculation-alerts { margin:14px 0; padding:14px 16px 14px 30px; border:1px solid #8b652f; border-radius:9px; color:#f4d49b; background:#33261155; font-size:12px; line-height:1.65; }
 .expense-description { display:grid; gap:6px; min-width:0; }.expense-description .shadcn-input { width:100%; }
 .item-pricing-panel { padding:24px; overflow:hidden; }.item-pricing-panel .panel-header { padding:0 0 18px; }

@@ -54,7 +54,7 @@ export function calculateWorksheetImport(operation: Pick<ImportOperation, "items
     const ii = cifBrl * tax("ii"), ipi = (cifBrl + ii) * tax("ipi"), pis = cifBrl * tax("pis_import"), cofins = cifBrl * tax("cofins_import");
     const taxes = ii + ipi + pis + cofins, totalCost = itemBase + allocatedExpenses + taxes;
     const margin = budget.marginRate;
-    const saleTotal = margin < 0 || !Number.isFinite(margin) || (budget.marginMethod === "sale_margin" && margin >= 100) ? null : budget.marginMethod === "sale_margin" ? totalCost / (1 - margin / 100) : totalCost * (1 + margin / 100);
+    const saleTotal = margin < 0 || !Number.isFinite(margin) ? null : totalCost * (1 + margin / 100);
     const markup = saleTotal === null ? 0 : saleTotal - totalCost;
     const pisDebit = (saleTotal ?? 0) * tax("pis_sale"), cofinsDebit = (saleTotal ?? 0) * tax("cofins_sale"), ipiDebit = (saleTotal ?? 0) * tax("ipi_sale");
     const pisNet = pisDebit - pis, cofinsNet = cofinsDebit - cofins, ipiNet = ipiDebit - ipi;
@@ -64,7 +64,7 @@ export function calculateWorksheetImport(operation: Pick<ImportOperation, "items
     return { ...item, itemFob: itemBase, allocatedExpenses, ii, ipi, pis, cofins, taxes, totalCost, unitCost: item.quantity <= 0 ? 0 : totalCost / item.quantity, pricing };
   });
   const sum = (key: keyof ItemPricing) => raw.reduce((total, item) => total + (item.pricing[key] ?? 0), 0);
-  const validSale = Number.isFinite(budget.marginRate) && budget.marginRate >= 0 && !(budget.marginMethod === "sale_margin" && budget.marginRate >= 100) && raw.every((item) => item.pricing.saleTotal !== null);
+  const validSale = Number.isFinite(budget.marginRate) && budget.marginRate >= 0 && raw.every((item) => item.pricing.saleTotal !== null);
   const totals = Object.fromEntries(["markup", "pisDebit", "pisCredit", "pisNet", "cofinsDebit", "cofinsCredit", "cofinsNet", "ipiDebit", "ipiCredit", "ipiNet", "icmsSale", "csll", "irpj", "irpjAdditional", "outputTaxes", "costWithOutputTaxes", "siscomex", "afrmm", "otherExpenses"].map((key) => [key, round(sum(key as keyof ItemPricing))])) as PricingTotals;
   totals.saleTotal = validSale ? round(sum("saleTotal")) : null; totals.cifBrl = round(sum("cifBrl")); totals.netWeightKg = totalNetWeight;
   const taxes = raw.reduce((sum, item) => sum + item.taxes, 0), totalCost = round(inputTotal + baseExpenses + taxes);
