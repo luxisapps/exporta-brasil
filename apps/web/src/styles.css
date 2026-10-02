@@ -553,13 +553,25 @@ ul.product-sheet-importer__warning { padding:12px 16px 12px 28px; }
 }
 
 .port-city-panel { margin-top:24px; }
-.port-city-panel .panel-header input { max-width:280px; }
+.port-city-panel .panel-header .port-city-search { width:280px; max-width:100%; }
 .port-default-list { padding:16px 24px; display:grid; gap:12px; }
 .port-default-list > div { display:flex; justify-content:space-between; align-items:center; gap:16px; }
 .port-expense-editor { display:grid; gap:16px; }
 .port-expense-editor > div { display:grid; grid-template-columns:minmax(0,1fr) minmax(160px,220px) 36px; align-items:start; gap:12px; }
 .port-expense-editor > div > button { margin-top:24px; }
-@media(max-width:767px){.port-expense-editor > div {grid-template-columns:minmax(0,1fr) 36px;}.port-expense-editor > div > label:first-child{grid-column:1/-1;}.port-city-panel .panel-header { flex-wrap:wrap; }}
+@media(max-width:767px){.port-expense-editor > div {grid-template-columns:minmax(0,1fr) 36px;}.port-expense-editor > div > .field:first-child{grid-column:1/-1;}.port-city-panel .panel-header { flex-wrap:wrap; }}
 
 .expense-row.expense-row--estimated,.expense-list__header.expense-row--estimated { grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(180px,1fr) 36px; }
 @media(max-width:767px){.expense-row.expense-row--estimated{grid-template-columns:minmax(0,1fr) 36px;}}
+
+@media(max-width:767px){.port-city-panel .panel-header .port-city-search {width:100%;}}
+
+/* Port configuration follows the shared 44px control rhythm. */
+.port-city-search { min-height:44px; }
+.port-city-search svg { flex-shrink:0; }
+.port-city-search input { min-width:0; min-height:42px; }
+.port-city-panel .panel-header h2 { margin:0; }
+.port-expense-editor .field { min-width:0; }
+.port-expense-editor > div > button { min-height:44px; margin-top:23px; }
+
+.field .shadcn-input:not([type="hidden"]):not([type="checkbox"]):not([type="file"]) { min-height:44px; }

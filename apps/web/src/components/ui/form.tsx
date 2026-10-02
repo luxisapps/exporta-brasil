@@ -37,7 +37,7 @@ export const Form = forwardRef<HTMLFormElement, Props>(({ schema, form, onSubmit
     void methods.handleSubmit(async values => { if (element.current) await onSubmit(values, element.current); }, invalid)(event).catch(() => methods.setError("root", { message: "Não foi possível salvar. Tente novamente." })).finally(() => { submitting.current = false; });
   }}>
     {methods.formState.errors.root?.message && <div className="full"><FieldError message={methods.formState.errors.root.message} /></div>}
-    {methods.formState.submitCount > 0 && errors.length > 1 && <div ref={summary} tabIndex={-1} className="form-error-summary full" role="alert"><strong>{translateUiText(locale, "Revise os campos destacados antes de salvar.")}</strong><ul>{errors.map(([name, error]) => <li key={name}><button type="button" onClick={() => focus([name])}>{labels[name] && `${translateUiText(locale, labels[name])}: `}{translateUiText(locale, error?.message || "Preencha este campo.")}</button></li>)}</ul></div>}
+    {methods.formState.submitCount > 0 && errors.length > 1 && <div ref={summary} tabIndex={-1} className="form-error-summary full" role="alert"><strong>{translateUiText(locale, "Revise os campos destacados antes de salvar.")}</strong><ul>{errors.map(([name, error]) => <li key={name}><Button type="button" onClick={() => focus([name])}>{labels[name] && `${translateUiText(locale, labels[name])}: `}{translateUiText(locale, error?.message || "Preencha este campo.")}</Button></li>)}</ul></div>}
     {children}
   </form></FormProvider>;
 });
