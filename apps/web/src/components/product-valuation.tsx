@@ -1,7 +1,5 @@
-import { useState } from "react";
-import { Pagination } from "./ui/pagination";
 import { useFormContext } from "react-hook-form";
-import { grossWeight, netWeight, productFobUsd, type ImportItem, type ImportOperation, calculateImport } from "@exporta/domain";
+import { grossWeight, netWeight, productFobUsd, type ImportItem } from "@exporta/domain";
 import { Field, FieldLabel } from "./ui/field";
 import { NumberInput } from "./ui/number-input";
 import { FormInput } from "./ui/form-input";
@@ -26,20 +24,5 @@ export function ProductValuationFields({ item, defaultReduction }: { item: Impor
       <div className="financial-readout"><span>{text("Pauta + sobra (USD/kg)")}</span><MoneyAmount value={(draft.pautaUsdPerKg ?? 0) + (draft.surplusUsdPerKg ?? 0)} currency="USD" /></div>
       <div className="financial-readout"><span>{text("FOB calculado (USD)")}</span><MoneyAmount value={productFobUsd(draft)} currency="USD" /></div>
     </div>
-  </section>;
-}
-
-export function ProductValuationPanel({ operation, calculated }: { operation: ImportOperation; calculated: ReturnType<typeof calculateImport> }) {
-  const locale = useLocale(), text = (label: string) => translateUiText(locale, label);
-  const [page, setPage] = useState(1);
-  const pageCount = Math.max(1, Math.ceil(calculated.items.length / 10));
-  const currentPage = Math.min(page, pageCount);
-  const weight = calculated.pricingTotals?.netWeightKg ?? 0;
-  const format = (value: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(value);
-  return <section className="panel" data-localized><div className="panel-header"><div><h2>{text("Formação dos valores dos produtos")}</h2><p>{text("Do peso bruto ao CFR: valores calculados por produto, antes dos impostos.")}</p></div></div>
-    <div className="valuation-totals"><span>{text("Quantidade total")}: <b>{format(operation.items.reduce((sum, item) => sum + item.quantity, 0))}</b></span><span>{text("Peso bruto total (kg)")}: <b>{format(calculated.totalWeight)}</b></span><span>{text("Peso líquido total (kg)")}: <b>{format(weight)}</b></span></div>
-    <div className="table-scroll"><table><thead><tr>{["Produto", "Peso líquido total (kg)", "Desconto do peso bruto (%)", "Pauta (USD/kg)", "Sobra (USD/kg)", "Pauta + sobra (USD/kg)", calculated.budget?.priceBasis === "cif" ? "CIF" : "FOB", "FRETE", "CFR"].map(label => <th key={label}>{text(label)}</th>)}</tr></thead><tbody>{calculated.items.slice((currentPage - 1) * 10, currentPage * 10).map(item => <tr key={item.id}><td>{item.name || item.chineseName}</td><td>{format(item.netWeightKg ?? 0)}</td><td>{item.netWeightReductionRate ?? "—"}</td><td>{item.pautaUsdPerKg === undefined ? "—" : <MoneyAmount value={item.pautaUsdPerKg} currency="USD" />}</td><td>{item.surplusUsdPerKg === undefined ? "—" : <MoneyAmount value={item.surplusUsdPerKg} currency="USD" />}</td><td>{item.pautaUsdPerKg === undefined ? "—" : <MoneyAmount value={item.pautaUsdPerKg + (item.surplusUsdPerKg ?? 0)} currency="USD" />}</td><td><MoneyAmount value={item.pricing?.inputUsd ?? 0} currency="USD" /></td><td><MoneyAmount value={calculated.exchangeRate > 0 ? (item.pricing?.freight ?? 0) / calculated.exchangeRate : 0} currency="USD" /></td><td><MoneyAmount value={(item.pricing?.inputUsd ?? 0) + (calculated.exchangeRate > 0 ? (item.pricing?.freight ?? 0) / calculated.exchangeRate : 0)} currency="USD" /></td></tr>)}</tbody></table></div>
-    <Pagination page={currentPage} pageCount={pageCount} onPageChange={setPage} label={text("Paginação dos produtos")} previousLabel={text("Anterior")} nextLabel={text("Próxima")} pageLabel={`${currentPage} / ${pageCount}`} />
-    {calculated.budget?.priceBasis === "cif" && <p>{text("Os valores importados já incluem frete; não some o frete novamente.")}</p>}
   </section>;
 }

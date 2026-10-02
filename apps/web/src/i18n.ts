@@ -622,3 +622,5 @@ Object.assign(uiText, {
     "zh-CN": "费用币种"
   }
 });
+
+Object.assign(uiText, {"Ver cálculo": {"en-US": "View calculation", "zh-CN": "查看计算"}, "Memória de cálculo": {"en-US": "Calculation details", "zh-CN": "计算明细"}, "CFR = FOB + frete internacional. Seguro é somado à base CIF quando informado.": {"en-US": "CFR = FOB + international freight. Insurance is added to the CIF basis when provided.", "zh-CN": "CFR=FOB+国际运费。填写保险费后计入CIF基数。"}, "II = CIF × alíquota; IPI = (CIF + II) × alíquota; PIS e COFINS = CIF × alíquota. Despesas são rateadas conforme a operação.": {"en-US": "II = CIF × rate; IPI = (CIF + II) × rate; PIS and COFINS = CIF × rate. Expenses use the operation allocation rules.", "zh-CN": "II=CIF×税率；IPI=（CIF+II）×税率；PIS和COFINS=CIF×税率。费用按业务规则分摊。"}});

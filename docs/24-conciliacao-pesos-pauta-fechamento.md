@@ -6,7 +6,7 @@
 2. Importar a planilha do cliente ou cadastrar produtos. Cada novo produto recebe uma cópia do percentual vigente; mudar a parametrização não modifica operações existentes.
 3. Editar o produto para preencher **pauta** e **sobra**, ambas em USD/kg, e ajustar o desconto daquele produto.
 4. Em **Estimativa de custos**, cadastrar o frete internacional, escolher **USD** e **Por peso**. O peso de referência usa a soma dos pesos líquidos, mas aceita ajuste explícito.
-5. Conferir a seção **Formação dos valores dos produtos**, paginada, e as memórias de impostos de entrada e saída. PDF e XLSX incluem todos os produtos.
+5. Na tabela **Produtos da importação**, abrir **Ver cálculo** para conferir os pesos, FOB/CFR e as memórias de impostos de entrada e saída. Os totais consolidados ficam em **Estimativa de custos**. PDF e XLSX incluem todos os produtos.
 
 A planilha da Rose importa o percentual de cada linha, pauta, sobra, frete e peso de referência. O preço comercial recebido do cliente continua armazenado separadamente do FOB calculado pela pauta. A planilha final importa CIF e peso líquido informado, sem inventar um peso bruto ou aplicar desconto novamente.
 
