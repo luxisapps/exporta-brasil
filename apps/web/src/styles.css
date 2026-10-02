@@ -255,7 +255,9 @@ h1, h2, p { margin: 0; } small { display: block; }
 .expense-list__header,.expense-row { display:grid; grid-template-columns:minmax(185px,1.5fr) minmax(112px,.8fr) minmax(112px,.8fr) minmax(120px,.75fr) 34px; gap:9px; align-items:center; padding:10px 12px; }
 .expense-list__header { color:#7f90a5; background:rgba(14,23,35,.66); font:500 10px "IBM Plex Mono",ui-monospace,monospace; letter-spacing:.04em; }
 .expense-row { border-top:1px solid rgba(148,163,184,.1); }
-.expense-row>input { width:100%; min-height:36px; padding:0 9px; color:#e6edf7; border:1px solid rgba(148,163,184,.2); border-radius:7px; background:rgba(5,7,10,.72); font-size:12px; }
+.expense-description>.shadcn-input { width:100%; min-width:0; height:44px; padding:0 12px; color:#dce8f6; border:1px solid rgba(148,163,184,.23); border-radius:8px; background:rgba(5,7,10,.7); font-size:12px; transition:border-color .18s ease,background .18s ease; }
+.expense-description>.shadcn-input:hover { border-color:rgba(147,197,253,.43); }
+.expense-description>.shadcn-input:disabled { cursor:not-allowed; opacity:.5; }
 .expense-row .shadcn-select-trigger { width:100%; }
 .expense-row .number-input { min-height:36px; }.expense-row .number-input input { min-height:34px; font-size:12px; }
 .expense-list__add { margin:12px; }
