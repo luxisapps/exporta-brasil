@@ -29,7 +29,7 @@ export const formSchemas = {
   userCreate: object({ name: required, email: required.pipe(email), role: required, initialPassword: password }),
   userEdit: object({ name: required, email: required.pipe(email), role: required }),
   profile: object({ name: required }),
-  import: object({ customerId: text.refine(value => Boolean(value), "Selecione um cliente."), eta: date(true), port: text }),
+  import: object({ customerId: text.refine(value => Boolean(value), "Selecione um cliente."), port: text }),
   customer: object({ legalName: required, country: required, taxId: text, email }).superRefine((values, context) => {
     if (values.country === "BR" && values.taxId.trim() && !isValidCnpj(values.taxId)) context.addIssue({ code: "custom", path: ["taxId"], message: "Informe um CNPJ válido." });
   }),

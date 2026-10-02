@@ -10,7 +10,7 @@ export function convertCurrency(value: number, from: Currency, to: Currency, rat
   return origin && target && Number.isFinite(origin) && Number.isFinite(target) && origin > 0 && target > 0 ? value * origin / target : null;
 }
 export const formatMoney = (value: number, currency: Currency = "BRL", locale = "pt-BR") => new Intl.NumberFormat(locale, { style: "currency", currency, currencyDisplay: "code" }).format(value);
-export const equivalentText = (value: number, currency: Currency, rates: ExchangeRates | null, locale = "pt-BR") => (["CNY", "USD"] as const).map((target) => {
+export const equivalentText = (value: number, currency: Currency, rates: ExchangeRates | null, locale = "pt-BR") => ((currency === "USD" ? ["BRL", "CNY"] : currency === "CNY" ? ["BRL", "USD"] : ["CNY", "USD"]) as Currency[]).map((target) => {
   const amount = convertCurrency(value, currency, target, rates);
   return amount === null ? `${target} —` : formatMoney(amount, target, locale);
 }).join(" · ");

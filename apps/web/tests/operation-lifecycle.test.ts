@@ -3,7 +3,7 @@ import test from "node:test";
 import { approveOperationCosts, calculateImport, effectiveOperationStatus, hasApprovedBudget, operationStatusOptions, type ImportOperation, type ImportBudget } from "@exporta/domain";
 
 const budget: ImportBudget = { id: "budget-1", name: "Costs", number: 1, status: "draft", createdAt: "2026-10-01", exchangeRate: 5, marginRate: 0, taxRates: [], expenses: [{ id: "freight", category: "freight", label: "Freight", amount: 200, currency: "BRL", allocationMethod: "fob", status: "estimated" }] };
-const operation: ImportOperation = { id: "imp-1", reference: "EB-2026-001", customer: "Client", port: "", container: "", status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", eta: "2026-10-10", createdAt: "2026-10-01", updatedAt: "2026-10-01", exchangeRate: 5, freightBrl: 200, insuranceBrl: 0, portExpensesBrl: 0, items: [{ id: "item-1", name: "Product", ncm: "", quantity: 2, unitPriceUsd: 10, grossWeightKg: 1, iiRate: 0, ipiRate: 0 }] };
+const operation: ImportOperation = { id: "imp-1", reference: "EB-2026-001", customer: "Client", port: "", container: "", status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", eta: "2026-10-10", createdAt: "2026-10-01", updatedAt: "2026-10-01", exchangeRate: 5, freightBrl: 200, insuranceBrl: 0, portExpensesBrl: 0, items: [{ id: "item-1", name: "Product", ncm: "", quantity: 2, unitPriceUsd: 10, grossWeightKg: 1, netWeightKg:2, iiRate: 0, ipiRate: 0 }] };
 
 test("cost and approved phases expose distinct status options without altering legacy records", () => {
   assert.deepEqual(operationStatusOptions(operation), ["draft", "quotation", "awaiting_approval"]);

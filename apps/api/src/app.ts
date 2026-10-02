@@ -1,3 +1,4 @@
+import { validPortCitySettings } from "@exporta/domain";
 import { getPtaxQuote, getPtaxYuan } from "./ptax.js";
 import { translationCacheSchema, translateProductNames } from "./product-translation.js";
 import cors from "@fastify/cors";
@@ -224,7 +225,7 @@ const seed: ImportOperation = {
     { id: "item-002", name: "Mochila executiva", ncm: "42029200", quantity: 720, unitPriceUsd: 11.7, grossWeightKg: 1.1, iiRate: 20, ipiRate: 10 }
   ]
 };
-imports.set(seed.id, seed);
+
 
 app.get("/health", async () => ({ status: "ok", service: "exporta-brasil-api" }));
 
@@ -347,6 +348,7 @@ app.put<{ Params: { key: string }; Body: { value: unknown } }>("/api/settings/:k
   if (!user) return reply.code(401).send({ message: "Sessão inválida." });
   if (!canWriteSetting(user.role, request.params.key)) return reply.code(403).send({ message: "Acesso restrito a administradores." });
   if (!database) return reply.code(503).send({ message: "Banco de dados indisponível." });
+  if (request.params.key === "port-cities" && !validPortCitySettings(request.body?.value)) return reply.code(400).send({ message: "Informe cidades e despesas válidas." });
   const value = request.params.key === "tax-rates" ? manualTaxRates(request.body?.value) : request.params.key === "product-defaults" ? manualProductDefaults(request.body?.value) : request.body.value;
   if (["tax-rates", "product-defaults"].includes(request.params.key) && !value) return reply.code(400).send({ message: "Informe todos os parâmetros com valores numéricos iguais ou maiores que zero." });
   await database.query("INSERT INTO app_settings (key, value, updated_at, updated_by) VALUES ($1, $2::jsonb, NOW(), $3) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = EXCLUDED.updated_by", [request.params.key, JSON.stringify(value), user.id]);
@@ -433,17 +435,17 @@ app.get<{ Params: { id: string } }>("/api/imports/:id", async (request, reply) =
   return { ...operation, summary: calculateImport(operation) };
 });
 
-app.post<{ Body: Pick<ImportOperation, "customer" | "customerId" | "eta"> & Partial<Pick<ImportOperation, "port">> & { existingReferences?: string[] } }>("/api/imports", async (request, reply) => {
+app.post<{ Body: Pick<ImportOperation, "customer" | "customerId"> & Partial<Pick<ImportOperation, "eta" | "port" | "portCityId" | "portCityName">> & { existingReferences?: string[] } }>("/api/imports", async (request, reply) => {
   const user = sessionUser(request.headers.authorization);
   if (!user) return reply.code(401).send({ message: "Sessão inválida." });
   if (!database) return reply.code(503).send({ message: "Banco de dados indisponível." });
-  if (typeof request.body.customer !== "string" || !request.body.customer.trim() || typeof request.body.eta !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(request.body.eta)) return reply.code(400).send({ message: "Informe cliente e data de chegada." });
+  if (typeof request.body.customer !== "string" || !request.body.customer.trim() ) return reply.code(400).send({ message: "Informe o cliente." });
   // Carry forward references from operations created locally before API allocation.
   const existingReferences = Array.isArray(request.body.existingReferences) ? request.body.existingReferences.filter((reference): reference is string => typeof reference === "string").map((reference) => ({ reference })) : [];
   const reference = await allocateImportReference(database, [...imports.values(), ...existingReferences]);
   const id = `imp-${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
-  const operation: ImportOperation = { id, reference, customer: request.body.customer, customerId: request.body.customerId, assigneeId: user.id, assigneeName: user.name, port: request.body.port ?? "", container: "", eta: request.body.eta, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
+  const operation: ImportOperation = { id, reference, customer: request.body.customer, customerId: request.body.customerId, assigneeId: user.id, assigneeName: user.name, port: request.body.port ?? "", container: "", eta: request.body.eta ?? "", portCityId:request.body.portCityId,portCityName:request.body.portCityName, status: "draft", portStatus: "awaiting_departure", customsChannel: "unassigned", createdAt: timestamp, updatedAt: timestamp, exchangeRate: 5.4, freightBrl: 0, insuranceBrl: 0, portExpensesBrl: 0, items: [] };
   imports.set(id, operation);
   return reply.code(201).send({ ...operation, summary: calculateImport(operation) });
 });

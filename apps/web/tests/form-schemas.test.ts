@@ -29,7 +29,7 @@ test("optional dates accept empty and past dates; real dates and times are check
   assert.equal(formSchemas.task.safeParse({ title: "Conferir", dueDate: "2026-02-30" }).success, false);
   assert.equal(formSchemas.timeline.safeParse({ title: "Recebido", type: "note", occurredAt: "2026-10-02T25:10" }).success, false);
 });
-test("new import requires the current API's customer and ETA, allows an unknown port", () => {
+test("new import requires only a customer and allows an unknown city", () => {
   assert.equal(formSchemas.import.safeParse({ customerId: "c1", eta: "2026-10-02", port: "" }).success, true);
   assert.equal(formSchemas.import.safeParse({ customerId: "", eta: "", port: "" }).success, false);
 });

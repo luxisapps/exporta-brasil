@@ -13,13 +13,14 @@ export type ItemPricing = {
 export type PricingTotals = Pick<ItemPricing, "markup" | "saleTotal" | "pisDebit" | "pisCredit" | "pisNet" | "cofinsDebit" | "cofinsCredit" | "cofinsNet" | "ipiDebit" | "ipiCredit" | "ipiNet" | "icmsSale" | "csll" | "irpj" | "irpjAdditional" | "outputTaxes" | "costWithOutputTaxes" | "siscomex" | "afrmm" | "otherExpenses"> & { cifBrl: number; netWeightKg: number };
 const round = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 export function effectiveTaxRate(item: ImportItem, budget: ImportBudget | undefined, code: TaxRateCode) {
+  if (code === "ipi_sale") return effectiveTaxRate(item,budget,"ipi");
   const override = item.taxRates?.find((entry) => entry.code === code)?.rate;
   const legacy = code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0;
   if (productTaxRateCodes.includes(code) && (budget?.taxInputPolicy === "per_product" || budget?.status !== "approved")) return override ?? legacy;
   return override ?? (legacy > 0 ? legacy : budget?.taxRates.find((entry) => entry.code === code)?.rate ?? legacy);
 }
 export function calculateWorksheetImport(operation: Pick<ImportOperation, "items" | "exchangeRate" | "freightBrl" | "insuranceBrl" | "portExpensesBrl" | "budgets">, budget: ImportBudget) {
-  operation = { ...operation, items: operation.items.map(item => ({ ...item, netWeightKg: netWeight(item) })) };
+  operation = { ...operation, items: operation.items.map(item => ({...item,netWeightKg:netWeight(item)})) };
   const exchangeRate = budget.exchangeRate, cifInput = budget.priceBasis === "cif";
   const inputTotal = operation.items.reduce((sum, item) => sum + productFobUsd(item) * exchangeRate, 0);
   const totalNetWeight = operation.items.reduce((sum, item) => sum + Math.max(0, item.netWeightKg ?? 0), 0);
@@ -36,17 +37,16 @@ export function calculateWorksheetImport(operation: Pick<ImportOperation, "items
   if (!operation.items.length) warnings.push("Adicione produtos antes de aprovar os custos.");
   if (operation.items.some(item => item.quantity <= 0 || !Number.isFinite(item.quantity) || productFobUsd(item) <= 0 || !Number.isFinite(productFobUsd(item)))) warnings.push("Preencha quantidade e preço positivos em todos os produtos.");
   if (operation.items.some(item => item.sourcePriceBasis === "cif") && !cifInput) warnings.push("A planilha contém valores CIF. Selecione a base CIF antes de concluir o orçamento.");
-  if (budget.taxInputPolicy === "per_product" && operation.items.some(item => productTaxRateCodes.some(code => !item.taxRates?.some(rate => rate.code === code && Number.isFinite(rate.rate) && rate.rate >= 0) && !((code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0) > 0)))) warnings.push("Preencha II, IPI de entrada e IPI de saída em cada produto, incluindo zero quando isento.");
-  const eligibleWeight = expenses.some((expense) => expense.amount > 0 && (expense.allocationMethod === "weight" || expense.kind === "siscomex" || expense.kind === "afrmm"));
+  if (budget.taxInputPolicy === "per_product" && operation.items.some(item => productTaxRateCodes.some(code => !item.taxRates?.some(rate => rate.code === code && Number.isFinite(rate.rate) && rate.rate >= 0) && !((code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0) > 0)))) warnings.push("Preencha II, IPI em cada produto, incluindo zero quando isento.");
+  const eligibleWeight = expenses.some((expense) => expense.amount > 0 && (expense.allocationMethod === "weight" || expense.kind === "freight" || expense.kind === "siscomex" || expense.kind === "afrmm"));
   if (eligibleWeight && operation.items.some((item) => !(item.netWeightKg && item.netWeightKg > 0))) warnings.push("Preencha o peso líquido total de todos os produtos para completar o rateio por peso.");
   if (expenses.some((expense) => expense.amount > 0 && expense.allocationMethod === "volume") && operation.items.some(item => !(volume(item) > 0))) warnings.push("Preencha o volume dos produtos para completar o rateio por volume.");
-  if (budget.freightWeightKg && Math.abs(budget.freightWeightKg - totalNetWeight) > 0.000001) warnings.push("O peso de referência do frete difere do peso líquido dos produtos; revise o rateio.");
   if (!operation.items.length && baseExpenses) warnings.push("Adicione produtos para distribuir as despesas.");
   const hasIncludedInternational = cifInput && budget.expenses.some((expense) => value(expense) !== 0 && isInternational(expense));
   if (hasIncludedInternational) warnings.push("Frete e seguro classificados como internacionais já estão no CIF e foram excluídos das despesas somadas.");
   const allocation = (expense: ImportExpense, item: ImportItem) => {
-    const method = expense.kind === "siscomex" || expense.kind === "afrmm" ? "weight" : expense.allocationMethod;
-    const denominator = method === "weight" ? (expense.kind === "freight" ? budget.freightWeightKg ?? totalNetWeight : totalNetWeight) : method === "volume" ? totalVolume : method === "quantity" ? totalQuantity : method === "fixed" ? operation.items.length : inputTotal;
+    const method = expense.kind === "freight" || expense.kind === "siscomex" || expense.kind === "afrmm" ? "weight" : expense.allocationMethod;
+    const denominator = method === "weight" ? totalNetWeight : method === "volume" ? totalVolume : method === "quantity" ? totalQuantity : method === "fixed" ? operation.items.length : inputTotal;
     const numerator = method === "weight" ? Math.max(0, item.netWeightKg ?? 0) : method === "volume" ? volume(item) : method === "quantity" ? item.quantity : method === "fixed" ? 1 : productFobUsd(item) * exchangeRate;
     return denominator > 0 ? value(expense) * numerator / denominator : 0;
   };

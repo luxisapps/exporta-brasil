@@ -1,4 +1,5 @@
-export { defaultNetWeightReductionRate, grossWeight, netWeight, productFobUsd, applyProductDefaults } from "./product-valuation.js";
+export * from "./port-cities.js";
+export { productQuantity, defaultNetWeightReductionRate, grossWeight, netWeight, productFobUsd, applyProductDefaults } from "./product-valuation.js";
 import { calculateWorksheetImport, type ItemPricing, type PricingTotals } from "./item-pricing.js";
 export { effectiveTaxRate } from "./item-pricing.js";
 export type { ItemPricing, PricingTotals } from "./item-pricing.js";
@@ -10,13 +11,13 @@ export type CustomsSignal = CustomsChannel | "unassigned";
 
 export type TaxRateCode = "ii" | "ipi" | "pis_import" | "cofins_import" | "icms_import" | "siscomex" | "afrmm" | "pis_sale" | "cofins_sale" | "ipi_sale" | "icms_sale" | "csll" | "irpj" | "irpj_additional";
 export const fixedTaxRateCodes: TaxRateCode[] = ["pis_import", "cofins_import", "pis_sale", "cofins_sale", "icms_sale", "csll", "irpj", "irpj_additional"];
-export const productTaxRateCodes: TaxRateCode[] = ["ii", "ipi", "ipi_sale"];
+export const productTaxRateCodes: TaxRateCode[] = ["ii", "ipi"];
 export type TaxRateSource = "default" | "ncm" | "siscomex" | "manual";
 export type TaxRate = { code: TaxRateCode; rate: number; source: TaxRateSource; overridden?: boolean; updatedAt?: string };
 export type ExpenseAllocationMethod = "fob" | "weight" | "volume" | "quantity" | "fixed";
 export type ExpenseStatus = "estimated" | "approved" | "contracted" | "invoiced" | "paid";
 export type ExpenseKind = "freight" | "insurance" | "siscomex" | "afrmm" | "other";
-export type ImportExpense = { kind?: ExpenseKind; id: string; category: string; label: string; amount: number; currency: "BRL" | "USD"; exchangeRate?: number; allocationMethod: ExpenseAllocationMethod; status: ExpenseStatus; vendor?: string; document?: string; dueDate?: string; paidAt?: string; notes?: string };
+export type ImportExpense = { defaultExpenseSource?: string; kind?: ExpenseKind; id: string; category: string; label: string; amount: number; currency: "BRL" | "USD"; exchangeRate?: number; allocationMethod: ExpenseAllocationMethod; status: ExpenseStatus; vendor?: string; document?: string; dueDate?: string; paidAt?: string; notes?: string };
 export type BudgetStatus = "draft" | "approved" | "superseded";
 export type ShipmentStatus = "not_shipped" | "purchase_confirmed" | "shipped" | "arrived" | "closed";
 /** calculationModel and marginMethod are compatibility metadata; the engine always uses worksheet + markup. */
@@ -60,7 +61,7 @@ export type OperationDocument = { id: string; type: string; title: string; refer
 export type Customer = { country?: string; id: string; legalName: string; tradeName: string; taxId: string; contactName: string; email: string; phone: string; postalCode?: string; street?: string; number?: string; complement?: string; district?: string; city?: string; state?: string; registrationStatus?: string; status: "active" | "inactive"; createdAt: string };
 export type PortFacility = { id: string; name: string; type: string; state: string; municipality: string; operationalStatus: string; management: string; waterway: string | null };
 
-export type ImportOperation = { id: string; reference: string; customerId?: string; customer: string; assigneeId?: string; assigneeName?: string; port: string; container: string; status: ImportStatus; portStatus: PortStatus; customsChannel: CustomsSignal; eta: string; createdAt: string; updatedAt: string; exchangeRate: number; freightBrl: number; insuranceBrl: number; portExpensesBrl: number; items: ImportItem[]; shipmentStatus?: ShipmentStatus; budgets?: ImportBudget[]; actualExpenses?: ImportExpense[]; timeline?: OperationTimelineEntry[]; tasks?: OperationTask[]; documents?: OperationDocument[] };
+export type ImportOperation = { id: string; reference: string; portCityId?: string; portCityName?: string; customerId?: string; customer: string; assigneeId?: string; assigneeName?: string; port: string; container: string; status: ImportStatus; portStatus: PortStatus; customsChannel: CustomsSignal; eta: string; createdAt: string; updatedAt: string; exchangeRate: number; freightBrl: number; insuranceBrl: number; portExpensesBrl: number; items: ImportItem[]; shipmentStatus?: ShipmentStatus; budgets?: ImportBudget[]; actualExpenses?: ImportExpense[]; timeline?: OperationTimelineEntry[]; tasks?: OperationTask[]; documents?: OperationDocument[] };
 
 /** Sequence follows the highest existing reference for the Brazilian business year. */
 export function nextImportReference(operations: Iterable<Pick<ImportOperation, "reference">>, year = Number(new Intl.DateTimeFormat("en", { year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date()))) {

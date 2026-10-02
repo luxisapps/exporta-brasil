@@ -1,6 +1,7 @@
 import type { ImportItem } from "./index.js";
 
 export const defaultNetWeightReductionRate = 6;
+export function productQuantity(item: Pick<ImportItem,"quantity"|"boxCount"|"unitsPerBox">) { return item.boxCount && item.boxCount > 0 && item.unitsPerBox && item.unitsPerBox > 0 ? item.boxCount*item.unitsPerBox : item.quantity; }
 export function grossWeight(item: Pick<ImportItem, "boxWeightKg" | "boxCount" | "grossWeightKg" | "quantity">) {
   return item.boxWeightKg !== undefined && item.boxCount !== undefined ? item.boxWeightKg * item.boxCount : item.grossWeightKg * item.quantity;
 }

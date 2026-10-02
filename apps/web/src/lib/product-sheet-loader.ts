@@ -8,7 +8,7 @@ export function parseProductSheet(file: File): Promise<ProductSheetResult> {
     worker.onmessage = (event: MessageEvent<ProductSheetWorkerResult>) => {
       worker.terminate();
       if ("error" in event.data) reject(new Error(event.data.error));
-      else resolve(event.data.result);
+      else resolve(manualProductSheet(event.data.result));
     };
     worker.onerror = () => {
       worker.terminate();
@@ -21,4 +21,8 @@ export function parseProductSheet(file: File): Promise<ProductSheetResult> {
     try { worker.postMessage(file); }
     catch (error) { worker.terminate(); reject(error); }
   });
+}
+
+export function manualProductSheet(result: ProductSheetResult): ProductSheetResult {
+ return {...result,budget:undefined,items:result.items.map(item=>({...item, quantity:item.boxCount && item.unitsPerBox ? item.boxCount*item.unitsPerBox:item.quantity,unitPriceUsd:0,pautaUsdPerKg:undefined,surplusUsdPerKg:undefined,sourcePriceBasis:undefined}))};
 }

@@ -1,7 +1,7 @@
 import { taxRateLabels, fixedTaxRateCodes, type TaxRate, type TaxRateCode } from "@exporta/domain";
 
 export function canWriteSetting(role: "admin" | "operator", key: string) {
-  return role === "admin" || ["tax-rates", "product-defaults"].includes(key);
+  return role === "admin" || ["tax-rates", "product-defaults", "port-cities"].includes(key);
 }
 
 export function manualTaxRates(value: unknown, updatedAt = new Date().toISOString()): TaxRate[] | null {

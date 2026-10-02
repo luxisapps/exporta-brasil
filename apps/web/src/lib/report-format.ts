@@ -38,20 +38,21 @@ export function addReportSheet(workbook: ExcelJS.Workbook, section: ReportSheet,
       if (typeof values[0] === "string" && values[0].startsWith("CUSTO TOTAL")) { cell.font = { name: "Calibri", size: column === 1 ? 12 : 16, bold: true, color: { argb: "FF173451" } }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2EEFA" } }; }
     });
     if (moneyColumns && Object.keys(moneyColumns).some((column) => typeof values[Number(column)] === "number")) {
-      for (const target of ["CNY", "USD"] as const) {
+      for (const position of [0,1] as const) {
         const equivalent = sheet.addRow([]); equivalent.height = 19;
         const labelColumn = values.findIndex((value, col) => typeof value === "string" && !moneyColumns?.[col]);
-        if (labelColumn >= 0) equivalent.getCell(labelColumn + 1).value = `≈ ${target}`;
+        if (labelColumn >= 0) equivalent.getCell(labelColumn + 1).value = position===0 ? "≈ BRL / CNY" : "≈ CNY / USD";
         Object.entries(moneyColumns).forEach(([column, currency]) => {
           const value = values[Number(column)];
           if (typeof value !== "number") return;
+          const target: Currency = currency === "USD" ? position===0?"BRL":"CNY" : currency === "CNY" ? position===0?"BRL":"USD" : position===0?"CNY":"USD";
           const result = convertCurrency(value, currency, target, rates);
           const cell = equivalent.getCell(Number(column) + 1);
           if (result === null) cell.value = `${target} indisponível`;
           else {
             const primary = row.getCell(Number(column) + 1).address;
             const quote = (code: Currency) => code === "USD" ? "'Cotações e metodologia'!$B$4" : "'Cotações e metodologia'!$B$5";
-            const formula = currency === target ? primary : `${primary}${currency === "BRL" ? "" : `*${quote(currency)}`}/${quote(target)}`;
+            const formula = `${primary}${currency === "BRL" ? "" : `*${quote(currency)}`}${target === "BRL" ? "" : `/${quote(target)}`}`;
             cell.value = { formula, result };
             cell.numFmt = `"${target}" #,##0.00;"${target}" -#,##0.00`;
           }

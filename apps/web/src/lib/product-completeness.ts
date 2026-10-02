@@ -14,8 +14,8 @@ export function missingProductFields(item: ImportItem, expenses: ImportExpense[]
   if (!positive(item.pautaUsdPerKg === undefined ? item.unitPriceUsd : productFobUsd(item))) missing.push("price");
   if (!validRate(item.iiRate)) missing.push("ii");
   if (!validRate(item.ipiRate)) missing.push("ipi");
-  if (requireProductRates) { for (const code of ["ii", "ipi", "ipi_sale"] as const) if (!item.taxRates?.some(rate => rate.code === code && validRate(rate.rate)) && !((code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0) > 0) && !missing.includes(code)) missing.push(code); }
-  const needsWeight = expenses.some((expense) => expense.amount > 0 && (expense.allocationMethod === "weight" || ["siscomex", "afrmm"].includes(expense.kind ?? "")));
+  if (requireProductRates) { for (const code of ["ii", "ipi"] as const) if (!item.taxRates?.some(rate => rate.code === code && validRate(rate.rate)) && !((code === "ii" ? item.iiRate : code === "ipi" ? item.ipiRate : 0) > 0) && !missing.includes(code)) missing.push(code); }
+  const needsWeight = expenses.some((expense) => expense.amount > 0 && (expense.allocationMethod === "weight" || ["freight", "siscomex", "afrmm"].includes(expense.kind ?? "")));
   const needsVolume = expenses.some((expense) => expense.amount > 0 && expense.allocationMethod === "volume");
   const weight = netWeight(item);
   const volume = item.totalVolumeM3 ?? ((item.lengthCm || 0) * (item.widthCm || 0) * (item.heightCm || 0) * (item.boxCount || 0) / 1_000_000);

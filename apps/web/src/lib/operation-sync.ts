@@ -21,7 +21,7 @@ export function useOperationSync(apiUrl: string, token: string, operations: Impo
       const data = await response.json(); if (!response.ok) throw new Error(data.message || "Não foi possível sincronizar as operações."); return data;
     };
     initialized.current = false; setReady(false); setError("");
-    void request("/bootstrap", { method: "POST", body: JSON.stringify({ operations: latest.current }) }).then((data: { items: Snapshot[] }) => {
+    void request("").then((data: { items: Snapshot[] }) => {
       if (!active) return;
       known.current = new Map(data.items.map(item => [item.operation.id, { json: JSON.stringify(item.operation), revision: item.revision }]));
       setOperations(data.items.map(item => item.operation)); initialized.current = true; setReady(true);
@@ -40,7 +40,10 @@ export function useOperationSync(apiUrl: string, token: string, operations: Impo
           known.current.set(item.operation.id, { json: JSON.stringify(item.operation), revision: item.revision });
           changes.set(item.operation.id, item.operation);
         }
-        setOperations(current => [...current.map(operation => changes.get(operation.id) ?? operation), ...[...changes.values()].filter(operation => !current.some(item => item.id === operation.id))]);
+        const remoteIds=new Set(data.items.map(item=>item.operation.id));
+        const removed=new Set([...known.current.keys()].filter(id=>!remoteIds.has(id)));
+        for (const id of removed) known.current.delete(id);
+        setOperations(current => [...current.filter(operation=>!removed.has(operation.id)).map(operation => changes.get(operation.id) ?? operation), ...[...changes.values()].filter(operation => !current.some(item => item.id === operation.id))]);
       } catch { /* Save errors are surfaced separately; reconnect retries remote updates. */ }
     };
     const event = () => void refresh.current();

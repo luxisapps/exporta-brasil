@@ -125,14 +125,8 @@ export async function registerNotifications(app: FastifyInstance, pool: Pool, au
   // Copies existing browser data once per operation; never overwrites a persisted version or sends historical notices.
   app.post<{ Body: { operations: ImportOperation[] } }>("/api/operation-snapshots/bootstrap", { bodyLimit: 16 * 1024 * 1024 }, async (request, reply) => {
     if (!user(request.headers.authorization)) return reply.code(401).send({ message: "Sessão inválida." });
-    if (!Array.isArray(request.body?.operations) || request.body.operations.length > 1000 || !request.body.operations.every(validOperation)) return reply.code(400).send({ message: "Operações inválidas." });
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      for (const operation of request.body.operations) await client.query("INSERT INTO app_operation_snapshots(id,value) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [operation.id, operation]);
-      await broadcast(client, [], "operations"); await client.query("COMMIT");
-      return { items: (await pool.query("SELECT value AS operation,revision FROM app_operation_snapshots ORDER BY updated_at DESC")).rows };
-    } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+    // Database snapshots are authoritative. Browser caches must never restore deleted beta operations.
+    return { items: (await pool.query("SELECT value AS operation,revision FROM app_operation_snapshots ORDER BY updated_at DESC")).rows };
   });
   app.put<{ Params: { id: string }; Body: { operation: ImportOperation; revision: number } }>("/api/operation-snapshots/:id", { bodyLimit: 16 * 1024 * 1024 }, async (request, reply) => {
     const identity = user(request.headers.authorization);

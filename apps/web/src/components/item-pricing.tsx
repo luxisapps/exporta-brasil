@@ -9,7 +9,7 @@ import { translateUiText } from "../i18n";
 
 export function ProductTaxFields({ item, budget }: { item: ImportItem | null; budget?: ImportBudget }) {
   const locale = useLocale(), text = (value: string) => translateUiText(locale, value);
-  const groups: [string, TaxRateCode[]][] = [["Impostos de entrada", ["ii", "ipi", "pis_import", "cofins_import"]], ["Impostos de saída", ["pis_sale", "cofins_sale", "ipi_sale", "icms_sale", "csll", "irpj", "irpj_additional"]]];
+  const groups: [string, TaxRateCode[]][] = [["Impostos de entrada", ["ii", "ipi", "pis_import", "cofins_import"]], ["Impostos de saída", ["pis_sale", "cofins_sale", "icms_sale", "csll", "irpj", "irpj_additional"]]];
   return <>{groups.map(([title, codes]) => <fieldset className="product-tax-fields full" key={title} data-localized><legend>{text(title)}</legend><div>{codes.map((code) => <ProductTaxField key={code} code={code} item={item} budget={budget} />)}</div></fieldset>)}</>;
 }
 function ProductTaxField({ code, item, budget }: { code: TaxRateCode; item: ImportItem | null; budget?: ImportBudget }) {
