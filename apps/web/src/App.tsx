@@ -844,7 +844,7 @@ function CustomerForm({ customer, onSubmit, onLookup, onAddressLookup, onCancel 
   const formRef = useRef<HTMLFormElement>(null);
   const locale = useLocale(), text = (value: string) => translateUiText(locale, value);
   const [activeTab, setActiveTab] = useState<"main" | "address" | "contact">("main");
-  const [country, setCountry] = useState(customer?.country || "BR");
+  const [country, setCountry] = useState(customer ? customer.country || "BR" : "CN");
   const brazilian = country === "BR";
   const [taxId, setTaxId] = useState(() => (customer?.country || "BR") === "BR" ? formatCnpj(customer?.taxId ?? "") : customer?.taxId ?? "");
   const [postalCode, setPostalCode] = useState(() => (customer?.country || "BR") === "BR" ? formatCep(customer?.postalCode ?? "") : customer?.postalCode ?? "");
