@@ -870,7 +870,11 @@ function CustomerForm({ customer, onSubmit, onLookup, onAddressLookup, onCancel 
     finally { if (request === companyRequest.current) setIsLookingUp(false); }
   };
   const lookupAddress = async (value: string) => {
-    if (!brazilian || !value.trim()) return;
+    if (!value.trim()) return;
+    if (!/^\d{5}-?\d{3}$/.test(value.trim())) {
+      if (brazilian) setAddressMessage("Informe os 8 dígitos do CEP para consultar o endereço.");
+      return;
+    }
     const raw = cepRaw(value);
     if (raw.length !== 8) { setAddressMessage("Informe os 8 dígitos do CEP para consultar o endereço."); return; }
     const request = ++addressRequest.current;
@@ -881,7 +885,7 @@ function CustomerForm({ customer, onSubmit, onLookup, onAddressLookup, onCancel 
   };
   const changeCountry = (next: string) => { ++companyRequest.current; ++addressRequest.current; setCountry(next); setIsLookingUp(false); setIsLookingUpAddress(false); setLookupMessage(""); setAddressMessage(""); setRegistrationStatus(""); };
   const changeTaxId = (value: string) => { ++companyRequest.current; setIsLookingUp(false); const formatted = brazilian ? formatCnpj(value) : value; setTaxId(formatted); setLookupMessage(""); setRegistrationStatus(""); if (brazilian && cnpjRaw(formatted).length === 14) void lookup(formatted); };
-  const changePostalCode = (value: string) => { ++addressRequest.current; setIsLookingUpAddress(false); const formatted = brazilian ? formatCep(value) : value; setPostalCode(formatted); setAddressMessage(""); if (brazilian && cepRaw(formatted).length === 8) void lookupAddress(formatted); };
+  const changePostalCode = (value: string) => { ++addressRequest.current; setIsLookingUpAddress(false); const formatted = brazilian ? formatCep(value) : value; setPostalCode(formatted); setAddressMessage(""); if (/^\d{5}-?\d{3}$/.test(formatted.trim())) void lookupAddress(formatted); };
   const submit = (event: FormEvent<HTMLFormElement>) => { if (brazilian && taxId.trim() && !isValidCnpj(taxId)) { event.preventDefault(); setActiveTab("main"); setLookupMessage("Informe um CNPJ válido antes de salvar."); return; } onSubmit(event); };
   const nextTab = () => { if (activeTab === "main" && !formRef.current?.reportValidity()) return; setActiveTab(activeTab === "main" ? "address" : "contact"); };
   const tab = (id: "main" | "address" | "contact", label: string, position: number) => <button className={`customer-form__tab ${activeTab === id ? "is-active" : ""}`} type="button" role="tab" aria-selected={activeTab === id} aria-controls={`customer-panel-${id}`} id={`customer-tab-${id}`} onClick={() => setActiveTab(id)}><b>{position}</b>{text(label)}</button>;
