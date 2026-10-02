@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.git/
+.vercel/
+.env
+.env.*
+output/
+tmp/
+.vite-web.*.log
+graphify-out/

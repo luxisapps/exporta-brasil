@@ -1,8 +1,9 @@
 import * as XLSX from "@e965/xlsx";
+import { readFinalCostSheet, type SheetBudget } from "./final-cost-sheet";
 import type { ImportItem } from "@exporta/domain";
 
 export type ImportedProduct = Omit<ImportItem, "id">;
-export type ProductSheetResult = { items: ImportedProduct[]; warnings: string[]; sheetName: string };
+export type ProductSheetResult = { items: ImportedProduct[]; warnings: string[]; sheetName: string; budget?: SheetBudget };
 
 type Field = keyof ImportedProduct;
 const headerAliases: Partial<Record<Field, string[]>> = {
@@ -17,6 +18,7 @@ const headerAliases: Partial<Record<Field, string[]>> = {
   unitsPerBox: ["每箱个数", "unidades por caixa", "units per box"], boxCount: ["总箱数", "total caixas", "total boxes"],
   unitPriceUsd: ["valor unitario usd", "preco unitario usd", "preco unitario us", "unit price usd", "valor unit usd", "preco usd", "cfr unitario", "cfr unit", "单品货值 usd", "unit value usd"],
   grossWeightKg: ["peso bruto unitario kg", "peso bruto kg", "peso unitario kg", "peso kg", "g w", "g w kg", "peso", "总重量 kg", "total weight kg"],
+  netWeightKg: ["peso liquido", "peso liquido total kg", "peso liquido kg", "p liquido", "net weight kg", "net weight"],
   boxWeightKg: ["单箱重量 kg", "peso por caixa kg", "weight per box kg"], totalVolumeM3: ["总体积 m3", "total volume", "total volume m3"],
   iiRate: ["ii", "aliquota ii", "ii percent", "ii %"], ipiRate: ["ipi", "aliquota ipi", "ipi percent", "ipi %"], leadTime: ["货期", "prazo", "lead time"]
 };
@@ -35,6 +37,8 @@ const findHeader = (rows: unknown[][]) => rows.findIndex((row) => row.some((cell
 
 export async function parseProductSheet(file: File): Promise<ProductSheetResult> {
   const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
+  const finalCosts = readFinalCostSheet(workbook);
+  if (finalCosts) return finalCosts;
   let selected: { sheetName: string; rows: unknown[][]; headerRowIndex: number } | undefined;
   let candidateCount = 0;
   for (const sheetName of workbook.SheetNames) {
@@ -61,7 +65,7 @@ export async function parseProductSheet(file: File): Promise<ProductSheetResult>
     const boxWeightKg = value("boxWeightKg"); const boxCount = value("boxCount");
     const chineseColumn = column("chineseName");
     const chineseName = chineseColumn >= 0 ? String(row[chineseColumn] ?? "") : /\p{Script=Han}/u.test(name) ? String(row[nameColumn] ?? "") : "";
-    return [{ name, chineseName: chineseName.trim() ? chineseName : undefined, englishName:text("englishName") || undefined, sku:text("sku") || undefined, description:text("description") || undefined, leadTime:text("leadTime") || undefined, quantity, ncm:text("ncm"), unitPriceUsd:value("unitPriceUsd"), grossWeightKg: boxWeightKg && boxCount ? boxWeightKg * boxCount / quantity : value("grossWeightKg"), boxWeightKg:boxWeightKg || undefined, boxCount:boxCount || undefined, unitsPerBox:value("unitsPerBox") || undefined, lengthCm:value("lengthCm") || undefined, widthCm:value("widthCm") || undefined, heightCm:value("heightCm") || undefined, totalVolumeM3:value("totalVolumeM3") || undefined, iiRate:value("iiRate"), ipiRate:value("ipiRate") }];
+    return [{ name, chineseName: chineseName.trim() ? chineseName : undefined, englishName:text("englishName") || undefined, sku:text("sku") || undefined, description:text("description") || undefined, leadTime:text("leadTime") || undefined, quantity, ncm:text("ncm"), unitPriceUsd:value("unitPriceUsd"), netWeightKg: column("netWeightKg") >= 0 ? value("netWeightKg") : undefined, grossWeightKg: boxWeightKg && boxCount ? boxWeightKg * boxCount / quantity : value("grossWeightKg"), boxWeightKg:boxWeightKg || undefined, boxCount:boxCount || undefined, unitsPerBox:value("unitsPerBox") || undefined, lengthCm:value("lengthCm") || undefined, widthCm:value("widthCm") || undefined, heightCm:value("heightCm") || undefined, totalVolumeM3:value("totalVolumeM3") || undefined, iiRate:value("iiRate"), ipiRate:value("ipiRate") }];
   });
   if (!items.length) throw new Error("Nenhum produto válido foi encontrado na planilha.");
   if (candidateCount > 1) warnings.push(`Aba “${selected.sheetName}” selecionada automaticamente por conter a maior lista de produtos.`);

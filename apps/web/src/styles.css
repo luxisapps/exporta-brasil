@@ -491,3 +491,22 @@ h1, h2, p { margin: 0; } small { display: block; }
 .budget-expenses-heading + .expense-list { margin-top:12px; }
 .budget-total-explanation { max-width:42ch; color:#9dadc1; font-size:12px; line-height:1.5; }
 @media (max-width:575px) { .budget-expenses-heading { align-items:start; flex-direction:column; } .budget-expenses-heading > div { text-align:left; } }
+
+.operation-detail-page,.operation-detail-page>.panel { min-width:0; }
+.budget-methods { display:grid; grid-template-columns:repeat(3,minmax(0,300px)); gap:14px; margin:14px 0; }
+.calculation-alerts { margin:14px 0; padding:14px 16px 14px 30px; border:1px solid #8b652f; border-radius:9px; color:#f4d49b; background:#33261155; font-size:12px; line-height:1.65; }
+.expense-description { display:grid; gap:6px; min-width:0; }.expense-description .shadcn-input { width:100%; }
+.item-pricing-panel { padding:24px; overflow:hidden; }.item-pricing-panel .panel-header { padding:0 0 18px; }
+.item-pricing-toolbar { display:flex; gap:12px; margin-bottom:16px; }.item-pricing-toolbar>input { max-width:340px; }.item-pricing-toolbar>[role=combobox] { max-width:260px; }
+.item-pricing-panel .table-scroll { overflow-x:auto; max-width:100%; border:1px solid #273242; border-radius:10px; }
+.item-pricing-panel table { min-width:800px; width:100%; }.item-pricing-panel td { vertical-align:top; padding:14px 12px; }.item-pricing-panel td:first-child { min-width:185px; }.item-pricing-panel td .money-amount { white-space:nowrap; }.item-pricing-panel td small { display:block; margin-top:4px; }
+.item-pricing-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:16px 0; color:#93a4ba; font-size:12px; }
+.item-pricing-totals { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; border-top:1px solid #263140; padding:18px 0 8px; }.item-pricing-totals>div { display:grid; gap:6px; }.item-pricing-totals>div>span { color:#a7b6ca; font-size:12px; }.item-pricing-totals .money-amount { font-size:18px; }
+.item-pricing-note { color:#8fa3bc; font-size:12px; line-height:1.6; margin:12px 0; }
+.product-tax-fields { border:1px solid #283449; border-radius:10px; margin:8px 0; padding:16px; }.product-tax-fields legend { font-weight:600; padding:0 6px; }.product-tax-fields>div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }.product-tax-field { display:grid; align-content:start; gap:7px; }.product-tax-field>span { font-size:12px; color:#bdcbe0; }
+@media(max-width:767px) { .budget-methods,.item-pricing-totals,.product-tax-fields>div { grid-template-columns:1fr; }.item-pricing-panel { padding:16px; }.item-pricing-toolbar,.item-pricing-footer { flex-direction:column; align-items:stretch; }.item-pricing-toolbar>input,.item-pricing-toolbar>[role=combobox] { max-width:none; }.budget-readouts { min-width:0; }.expense-list { max-width:100%; overflow-x:auto; } }
+
+.expense-list,.table-scroll { position:relative; }
+@media(max-width:767px) { .operation-detail-page .cost-result { grid-template-columns:minmax(0,1fr); gap:16px; }.financial-workspace { overflow:hidden; }.operation-detail-page .cost-total { justify-items:start; text-align:left; }.financial-workspace .budget-methods { max-width:100%; } }
+
+.item-pricing-toolbar>.shadcn-input { height:44px; padding:0 12px; width:100%; color:#e3ecfa; border:1px solid #344156; border-radius:8px; background:#070c13; font-size:13px; }

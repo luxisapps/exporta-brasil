@@ -6,10 +6,10 @@ import { numberSeparators } from "../../lib/form-values";
 import { CurrencyEquivalents } from "../money-amount";
 
 type Props = Omit<ComponentPropsWithoutRef<"input">, "value" | "defaultValue" | "onChange" | "type" | "prefix"> & {
-  value?: number; defaultValue?: number; onValueChange?: (value: number) => void; currency?: "BRL" | "USD"; suffix?: string; prefix?: string; decimalScale?: number;
+  value?: number; defaultValue?: number; onValueChange?: (value: number) => void; currency?: "BRL" | "USD"; suffix?: string; prefix?: string; decimalScale?: number; fixedDecimalScale?: boolean;
 };
 
-export function NumberInput({ value, defaultValue, onValueChange, currency, suffix, prefix, decimalScale = currency ? 2 : 0, name, min = 0, max, className = "", ...props }: Props) {
+export function NumberInput({ value, defaultValue, onValueChange, currency, suffix, prefix, decimalScale = currency ? 2 : 0, fixedDecimalScale = Boolean(currency), name, min = 0, max, className = "", ...props }: Props) {
   const locale = useLocale();
   const { decimal, group } = numberSeparators(locale);
   const [draft, setDraft] = useState(() => value === undefined && defaultValue === undefined ? "" : String(value ?? defaultValue));
@@ -24,7 +24,7 @@ export function NumberInput({ value, defaultValue, onValueChange, currency, suff
   const unit = currency ? (currency === "USD" ? "US$" : "R$") : prefix;
   return <div className={currency ? "currency-number-field" : undefined}><div className={`formatted-number ${className}`} data-disabled={props.disabled || undefined}>
     {unit && <span className="formatted-number__unit" aria-hidden="true">{unit}</span>}
-    <NumericFormat placeholder={currency ? new Intl.NumberFormat(locale, { minimumFractionDigits: 2 }).format(0) : undefined} spellCheck={false} {...props} customInput={Input} getInputRef={input} value={draft} valueIsNumericString thousandSeparator={group} decimalSeparator={decimal} allowedDecimalSeparators={[decimal]} decimalScale={decimalScale} fixedDecimalScale={Boolean(currency)} allowNegative={false} allowLeadingZeros={false} inputMode={decimalScale ? "decimal" : "numeric"} onValueChange={({ value: raw, floatValue }, { source }) => { if (source !== "event") return; setDraft(raw); onValueChange?.(floatValue ?? 0); }} />
+    <NumericFormat placeholder={currency ? new Intl.NumberFormat(locale, { minimumFractionDigits: 2 }).format(0) : undefined} spellCheck={false} {...props} customInput={Input} getInputRef={input} value={draft} valueIsNumericString thousandSeparator={group} decimalSeparator={decimal} allowedDecimalSeparators={[decimal]} decimalScale={decimalScale} fixedDecimalScale={fixedDecimalScale} allowNegative={false} allowLeadingZeros={false} inputMode={decimalScale ? "decimal" : "numeric"} onValueChange={({ value: raw, floatValue }, { source }) => { if (source !== "event") return; setDraft(raw); onValueChange?.(floatValue ?? 0); }} />
     {suffix && <span className="formatted-number__unit" aria-hidden="true">{suffix}</span>}
     {name && <input autoComplete="off" type="hidden" name={name} value={draft} disabled={props.disabled} />}
   </div>{currency && draft !== "" && Number.isFinite(Number(draft)) && <CurrencyEquivalents value={Number(draft)} currency={currency} />}</div>;

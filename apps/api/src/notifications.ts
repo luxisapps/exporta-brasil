@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import type { Pool, PoolClient } from "pg";
 import { importStatusMeta, portStatusMeta, customsChannelMeta, shipmentStatusMeta, type ImportOperation } from "@exporta/domain";
 import { dueNotices, operationNotices, type Notice } from "./notification-rules.js";
+import { validPricingFields } from "./pricing-validation.js";
 
 type Identity = { id: string; name: string; mustChangePassword: boolean };
 export async function registerNotifications(app: FastifyInstance, pool: Pool, authenticate: (authorization?: string) => Identity | undefined) {
@@ -114,7 +115,8 @@ export async function registerNotifications(app: FastifyInstance, pool: Pool, au
       && (operation.tasks ?? []).every(item => named(item) && typeof item.completed === "boolean" && (item.assigneeId === undefined || typeof item.assigneeId === "string"))
       && (operation.documents ?? []).every(item => named(item) && ["pending", "available", "expired"].includes(item.status))
       && (operation.timeline ?? []).every(item => named(item) && typeof item.occurredAt === "string")
-      && (operation.budgets ?? []).every(item => record(item) && typeof item.id === "string" && Array.isArray(item.expenses) && Array.isArray(item.taxRates));
+      && (operation.budgets ?? []).every(item => record(item) && typeof item.id === "string" && Array.isArray(item.expenses) && Array.isArray(item.taxRates))
+      && validPricingFields(operation);
   };
   app.get("/api/operation-snapshots", async (request, reply) => {
     if (!user(request.headers.authorization)) return reply.code(401).send({ message: "Sessão inválida." });
