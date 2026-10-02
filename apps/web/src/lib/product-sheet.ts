@@ -1,7 +1,7 @@
 import { readRoseProductSheet } from "./rose-product-sheet";
 import * as XLSX from "@e965/xlsx";
 import { readFinalCostSheet, type SheetBudget } from "./final-cost-sheet";
-import type { ImportItem } from "@exporta/domain";
+import type { ImportItem, TaxRate } from "@exporta/domain";
 
 export type ImportedProduct = Omit<ImportItem, "id">;
 export type ProductSheetResult = { items: ImportedProduct[]; warnings: string[]; sheetName: string; budget?: SheetBudget };
@@ -66,9 +66,11 @@ export async function parseProductSheet(file: File): Promise<ProductSheetResult>
     const value = (field: Field) => { const position = column(field); return position < 0 ? 0 : toNumber(row[position]); };
     const text = (field: Field) => { const position = column(field); return position < 0 ? "" : String(row[position] ?? "").trim(); };
     const boxWeightKg = value("boxWeightKg"); const boxCount = value("boxCount");
+    const outputIpiColumn = headers.findIndex(header => ["ipi saida", "aliquota ipi saida", "ipi sale", "ipi sale rate"].includes(header));
+    const suppliedRates: TaxRate[] = ([ ["ii", column("iiRate")], ["ipi", column("ipiRate")], ["ipi_sale", outputIpiColumn] ] as const).filter(([, position]) => position >= 0 && String(row[position] ?? "").trim() !== "").map(([code, position]) => ({ code, rate: toNumber(row[position]), source: "manual", overridden: true }));
     const chineseColumn = column("chineseName");
     const chineseName = chineseColumn >= 0 ? String(row[chineseColumn] ?? "") : /\p{Script=Han}/u.test(name) ? String(row[nameColumn] ?? "") : "";
-    return [{ name, chineseName: chineseName.trim() ? chineseName : undefined, englishName:text("englishName") || undefined, sku:text("sku") || undefined, description:text("description") || undefined, leadTime:text("leadTime") || undefined, quantity, ncm:text("ncm"), unitPriceUsd:value("unitPriceUsd"), netWeightKg: column("netWeightKg") >= 0 ? value("netWeightKg") : undefined, grossWeightKg: boxWeightKg && boxCount ? boxWeightKg * boxCount / quantity : value("grossWeightKg"), boxWeightKg:boxWeightKg || undefined, boxCount:boxCount || undefined, unitsPerBox:value("unitsPerBox") || undefined, lengthCm:value("lengthCm") || undefined, widthCm:value("widthCm") || undefined, heightCm:value("heightCm") || undefined, totalVolumeM3:value("totalVolumeM3") || undefined, iiRate:value("iiRate"), ipiRate:value("ipiRate") }];
+    return [{ name, ...(suppliedRates.length ? { taxRates: suppliedRates } : {}), chineseName: chineseName.trim() ? chineseName : undefined, englishName:text("englishName") || undefined, sku:text("sku") || undefined, description:text("description") || undefined, leadTime:text("leadTime") || undefined, quantity, ncm:text("ncm"), unitPriceUsd:value("unitPriceUsd"), netWeightKg: column("netWeightKg") >= 0 ? value("netWeightKg") : undefined, grossWeightKg: boxWeightKg && boxCount ? boxWeightKg * boxCount / quantity : value("grossWeightKg"), boxWeightKg:boxWeightKg || undefined, boxCount:boxCount || undefined, unitsPerBox:value("unitsPerBox") || undefined, lengthCm:value("lengthCm") || undefined, widthCm:value("widthCm") || undefined, heightCm:value("heightCm") || undefined, totalVolumeM3:value("totalVolumeM3") || undefined, iiRate:value("iiRate"), ipiRate:value("ipiRate") }];
   });
   if (!items.length) throw new Error("Nenhum produto válido foi encontrado na planilha.");
   if (candidateCount > 1) warnings.push(`Aba “${selected.sheetName}” selecionada automaticamente por conter a maior lista de produtos.`);

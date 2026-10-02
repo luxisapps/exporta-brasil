@@ -42,3 +42,10 @@ test("preserves the original Chinese name and keeps a supplied Portuguese name",
   assert.equal(result.items[0].chineseName, "背包");
   assert.equal(result.items[1].chineseName, "发饰5件套");
 });
+
+test("spreadsheet zero tax rates remain explicit per-product values", async () => {
+ const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet([["Produto","Quantidade","II","IPI","IPI saída"],["Produto isento",1,0,0,0]]),"Produtos");
+ const bytes = XLSX.write(book,{type:"buffer",bookType:"xlsx"});
+ const result = await parseProductSheet(new File([bytes],"isentos.xlsx"));
+ assert.deepEqual(result.items[0].taxRates?.map(rate=>[rate.code,rate.rate]),[["ii",0],["ipi",0],["ipi_sale",0]]);
+});
