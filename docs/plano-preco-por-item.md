@@ -28,7 +28,7 @@ Referência: `planilha-final-de-custos.xlsx`, abas PREÇO POR ITEM e FECHAMENTO.
 - [x] Dados e importação
 - [x] Interface e alíquotas
 - [x] PDF/Excel e relatórios
-- [ ] Testes contra a planilha, build e publicação
+- [x] Testes contra a planilha, build e publicação
 
 ## Como testar
 
@@ -51,3 +51,11 @@ Referência: `planilha-final-de-custos.xlsx`, abas PREÇO POR ITEM e FECHAMENTO.
 - Adicional IRPJ: a planilha usa 20% sobre o acréscimo. É um parâmetro operacional editável, não a regra fiscal geral. A [Receita Federal](https://www.gov.br/receitafederal/pt-br/assuntos/orientacao-tributaria/tributos/IRPJ) descreve adicional de 10% sobre o excedente de R$ 20 mil por mês. Revisão contábil necessária antes de tratar o orçamento como apuração fiscal.
 - Novos campos são opcionais e persistidos no JSONB das operações pelo fluxo existente, sem migração destrutiva de dados.
 - Interface conferida no desktop e em viewport de 390 px, com rolagem horizontal restrita às tabelas/despesas. PDF renderizado e Excel conferido em células numéricas.
+
+## Entrega
+
+- 38 testes passaram (toda a suíte web), incluindo sete testes novos de preço por item, referência Excel, preservação do legado e exportações.
+- Build do monorepo passou. O aviso de tamanho dos módulos de exportação já existentes permanece; eles são carregados sob demanda.
+- Publicado na Vercel: https://exporta-brasil-gamma.vercel.app
+- API no Railway: https://exporta-brasil-production.up.railway.app; health retornou status ok.
+- Pendente operacional: validar o modelo tributário com o contador, especialmente ICMS de entrada e adicional IRPJ. Integração autenticada Siscomex permanece fora desta entrega.
