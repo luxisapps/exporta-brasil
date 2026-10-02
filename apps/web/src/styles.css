@@ -478,7 +478,7 @@ h1, h2, p { margin: 0; } small { display: block; }
 @media (max-width:1199px) { .dashboard-page .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:575px) { .dashboard-page .metric-grid { grid-template-columns:1fr; } .dashboard-page .metric-card > strong { font-size:27px; } }
 
-.financial-workspace .budget-assumptions { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; margin-bottom:14px; }
+.financial-workspace .budget-assumptions { grid-template-columns:repeat(2,minmax(0,260px)); align-items:start; margin-bottom:14px; }
 .budget-readouts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:0 0 18px; }
 .budget-readouts .financial-readout { align-content:start; padding:14px; }
 @media (max-width:767px) { .financial-workspace .budget-assumptions,.budget-readouts { grid-template-columns:1fr; } }
