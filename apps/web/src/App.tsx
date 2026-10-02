@@ -1,3 +1,4 @@
+import { PhoneInput } from "./components/ui/phone-input";
 import { Field, FieldLabel } from "./components/ui/field";
 import { Input as RawInput } from "./components/ui/input";
 import { cnpjRaw, cepRaw, formatCep, formatCnpj, isValidCnpj } from "./lib/company-fields";
@@ -936,7 +937,7 @@ function CustomerForm({ customer, onSubmit, onLookup, onAddressLookup, onCancel 
       <div className="customer-form__fields">
         <Field className="full"><FieldLabel>{text("Responsável")}</FieldLabel><Input name="contactName" defaultValue={customer?.contactName} placeholder={text("Nome do contato")} /></Field>
         <Field ><FieldLabel>{text("E-mail")}</FieldLabel><Input name="email" type="email" defaultValue={customer?.email} placeholder="contato@empresa.com" /></Field>
-        <Field ><FieldLabel>{text("Telefone com código do país")}</FieldLabel><Input name="phone" type="tel" defaultValue={customer?.phone} placeholder={country === "CN" ? "+86 138 0013 8000" : brazilian ? "+55 11 99999-9999" : "+1 202 555 0123"} maxLength={50} /></Field>
+        <Field ><FieldLabel>{text("Telefone com código do país")}</FieldLabel><PhoneInput name="phone" country={country} defaultValue={customer?.phone} /></Field>
       </div>
     </div>
     <div className="customer-form__actions full"><button className="button button--secondary" type="button" onClick={() => setActiveTab(activeTab === "main" ? "contact" : activeTab === "address" ? "main" : "address")}>{text("Anterior")}</button>{activeTab !== "contact" ? <button className="button button--primary" key="continue" type="button" onClick={(event) => { nextTab(); }}>{text("Continuar")}</button> : <button className="button button--primary" key="save" type="submit"><Users size={18} />{text(customer ? "Salvar alterações" : "Salvar cliente")}</button>}</div>

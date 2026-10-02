@@ -525,3 +525,5 @@ h1, h2, p { margin: 0; } small { display: block; }
 .login-card .login-field { gap: 7px; color: #d7e2ef; font-size: 13px; font-weight: 600; }
 .login-card .login-input .shadcn-input { border: 0; border-radius: 0; min-height: 46px; background: transparent; padding: 0; }
 .login-card .login-input .shadcn-input:focus-visible { outline: none; box-shadow: none; }
+
+.phone-input{display:flex;gap:8px;min-width:0}.phone-input__country{width:112px;flex-shrink:0}.phone-input>.shadcn-input{min-width:0;flex:1}.phone-input__option{display:flex;align-items:center;gap:8px}.phone-input__option svg{width:21px;height:15px;flex-shrink:0;border-radius:2px}.phone-input__option small{margin-left:auto;color:var(--muted-foreground,#aab8cd)}.phone-input__menu{max-width:calc(100vw - 32px);width:300px}
