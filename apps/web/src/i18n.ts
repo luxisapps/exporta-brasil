@@ -632,3 +632,5 @@ Object.assign(uiText, {"Cidades portuárias": {"en-US": "Port cities", "zh-CN": 
 Object.assign(uiText,{"Frete por produto = frete internacional × peso líquido do produto ÷ peso líquido total.":{"en-US":"Freight per product = international freight × product net weight ÷ total net weight.","zh-CN":"每个产品运费 = 国际运费 × 产品净重 ÷ 总净重。"}});
 
 Object.assign(uiText,{"Valores padrão incluídos nos novos orçamentos, independentemente da cidade. Podem ser ajustados em cada operação.":{"en-US":"Default amounts included in new estimates for every city. They can be adjusted per operation.","zh-CN":"无论城市如何，新预算都会包含这些默认金额。可在每项业务中调整。"}});
+
+Object.assign(uiText, {"Selecionar cidade": {"en-US": "Select city", "zh-CN": "选择城市"}, "Buscar cidade ou UF": {"en-US": "Search city or state", "zh-CN": "搜索城市或州"}, "Nenhuma cidade encontrada.": {"en-US": "No cities found.", "zh-CN": "未找到城市。"}, "Não foi possível carregar as cidades.": {"en-US": "Could not load cities.", "zh-CN": "无法加载城市。"}, "Carregando cidades…": {"en-US": "Loading cities…", "zh-CN": "正在加载城市…"}});

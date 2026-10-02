@@ -17,6 +17,7 @@
     "@radix-ui/react-select": "^2.3.7",
     "@radix-ui/react-slider": "^1.4.7",
     "@radix-ui/react-toggle": "^1.1.18",
+    "cmdk": "^1.1.1",
     "country-flag-icons": "^1.6.20",
     "date-fns": "^4.4.0",
     "exceljs": "^4.4.0",
